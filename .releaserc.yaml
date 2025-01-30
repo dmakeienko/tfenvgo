@@ -1,0 +1,21 @@
+branches:
+  - "main"
+plugins:
+  - "@semantic-release/commit-analyzer"
+  - "@semantic-release/changelog"
+  - "@semantic-release/github"
+  - "@semantic-release/git"
+
+verifyConditions:
+  - "@semantic-release/changelog"
+  - "@semantic-release/git"
+analyzeCommits:
+  - path: '@semantic-release/commit-analyzer'
+prepare:
+  - path: "@semantic-release/changelog"
+    changelogFile: CHANGELOG.md
+  - path: "@semantic-release/git"
+    message: 'RELEASE: ${nextRelease.version}'
+    assets: ['CHANGELOG.md']
+publish:
+  - "@semantic-release/github"

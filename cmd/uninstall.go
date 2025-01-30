@@ -1,5 +1,4 @@
-The MIT License (MIT)
-
+/*
 Copyright © 2025 Denys Makeienko <denys.makeienko@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,3 +18,30 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+*/
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+func uninstallTerraform(version string) {
+	fmt.Println(Yellow + "Uninstalling Terraform version v" + version + Reset)
+	os.RemoveAll(terraformVersionPath + "/" + version)
+}
+
+// uninstallCmd represents the uninstall command
+var uninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Uninstalls a specific Terraform version",
+	Run: func(cmd *cobra.Command, args []string) {
+		uninstallTerraform(args[0])
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(uninstallCmd)
+}

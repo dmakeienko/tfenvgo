@@ -1,5 +1,4 @@
-The MIT License (MIT)
-
+/*
 Copyright © 2025 Denys Makeienko <denys.makeienko@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,3 +18,38 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+*/
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+func useVersion(version string) {
+	// check if .tfenvgo/bin/terraform exists
+	terraformPath := terraformBinPath + "/terraform"
+	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
+	if _, err := os.Lstat(terraformPath); err == nil {
+		os.Remove(terraformPath)
+		os.Symlink(terraformSelectedPath, terraformPath)
+	} else {
+		os.Symlink(terraformSelectedPath, terraformPath)
+	}
+	fmt.Println(Green + "Changed current terraform version to v" + version + Reset)
+}
+
+// useCmd represents the use command
+var useCmd = &cobra.Command{
+	Use:   "use",
+	Short: "Changes the current Terraform version",
+	Run: func(cmd *cobra.Command, args []string) {
+		useVersion(args[0])
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(useCmd)
+}
