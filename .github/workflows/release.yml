@@ -25,7 +25,7 @@ jobs:
           VERSION=$(git describe --tags --abbrev=0)
           go build -ldflags="-X github.com/spf13/tfenvgo/cmd.Version=$VERSION"
 
-      - name: Create release
+      - name: Upload binary
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
