@@ -69,7 +69,6 @@ func getTerraformVersions() ([]string, error) {
 		}
 	}
 
-	// sort.Sort(sort.Reverse(sort.StringSlice(versions))) // Сортуємо у зворотному порядку (від нових до старих)
 	return versions, nil
 }
 

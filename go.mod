@@ -5,6 +5,7 @@ go 1.23.5
 require golang.org/x/net v0.34.0
 
 require (
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

@@ -24,19 +24,39 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"regexp"
+	"sort"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 )
 
 func listInstalledVersions() error {
 	files, err := os.ReadDir(terraformVersionPath)
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	var versions []*semver.Version
+	rgx := regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+
 	for _, f := range files {
-		fmt.Println(f.Name())
+		name := f.Name()
+		if rgx.MatchString(name) {
+			v, err := semver.NewVersion(name)
+			if err == nil {
+				versions = append(versions, v)
+			}
+		}
 	}
-	return err
+
+	sort.Sort(sort.Reverse(semver.Collection(versions))) // Sort in descending order, top one is always the latest
+
+	for _, v := range versions {
+		fmt.Println(v)
+	}
+
+	return nil
 }
 
 // listCmd represents the list command
