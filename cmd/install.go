@@ -25,6 +25,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path"
@@ -34,52 +35,74 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func unarchiveZip(archivePath, version string) {
-	dst := terraformVersionPath + "/" + version
+func unarchiveZip(archivePath, version string) error {
+	dst := filepath.Clean(filepath.Join(terraformVersionPath, version))
+
 	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("failed to open archive: %w", err)
 	}
 	defer archive.Close()
 
-	for _, f := range archive.File {
-		filePath := filepath.Join(dst, f.Name)
-		fmt.Println("unzipping file ", filePath)
+	// Create the destination directory
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %w", err)
+	}
 
-		if !strings.HasPrefix(filePath, filepath.Clean(dst)+string(os.PathSeparator)) {
-			fmt.Println("invalid file path")
-			return
+	for _, f := range archive.File {
+		// Clean the file path and ensure it's within the destination directory
+		filePath := filepath.Clean(filepath.Join(dst, f.Name)) //nolint
+
+		// Prevent path traversal by checking if the file path is within the destination
+		if !strings.HasPrefix(filePath, dst) {
+			return fmt.Errorf("invalid file path (potential path traversal): %s", f.Name)
 		}
+
 		if f.FileInfo().IsDir() {
-			fmt.Println("creating directory..." + filePath)
-			err := os.MkdirAll(filePath, os.ModePerm)
-			if err != nil {
-				fmt.Println("failed to create directory: %w", err)
+			fmt.Printf("Creating directory: %s\n", filePath)
+			if err := os.MkdirAll(filePath, 0755); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", filePath, err)
 			}
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(filePath), os.ModePerm); err != nil {
-			panic(err)
+		// Create parent directories if they don't exist
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+			return fmt.Errorf("failed to create parent directory for %s: %w", filePath, err)
 		}
 
-		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+		// Create the file with secure permissions
+		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 		if err != nil {
-			panic(err)
+			return fmt.Errorf("failed to create file %s: %w", filePath, err)
 		}
 
 		fileInArchive, err := f.Open()
 		if err != nil {
-			panic(err)
+			dstFile.Close()
+			return fmt.Errorf("failed to open file in archive %s: %w", f.Name, err)
 		}
 
-		if _, err := io.Copy(dstFile, fileInArchive); err != nil {
-			panic(err)
+		// Check for G110: Potential DoS vulnerability via decompression bomb
+		for {
+			_, err := io.CopyN(dstFile, fileInArchive, 1024)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return err
+			}
 		}
 
-		dstFile.Close()
 		fileInArchive.Close()
+		dstFile.Close()
+
+		if err != nil {
+			return fmt.Errorf("failed to copy file contents %s: %w", f.Name, err)
+		}
 	}
+
+	return nil
 }
 
 func downloadTerraform(version string) error {
@@ -105,7 +128,16 @@ func downloadTerraform(version string) error {
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
-	unarchiveZip(filepath, version)
+
+	if err != nil {
+		return err
+	}
+
+	err = unarchiveZip(filepath, version)
+
+	if err != nil {
+		log.Printf("Failed to unarchive: %v", err)
+	}
 	println("Removing" + filepath)
 	os.Remove(filepath)
 	return err
