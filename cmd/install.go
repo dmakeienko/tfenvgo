@@ -106,6 +106,13 @@ func unarchiveZip(archivePath, version string) error {
 }
 
 func downloadTerraform(version string) error {
+	if version == "latest" {
+		versions, err := getTerraformVersions()
+		if err != nil {
+			fmt.Println("failed to get latest version: %w", err)
+		}
+		version = versions[0]
+	}
 	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
 	fmt.Println("Downloading " + terraformDownloadURL)
 
