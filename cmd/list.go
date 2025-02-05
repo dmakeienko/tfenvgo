@@ -44,7 +44,10 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		listInstalledVersions()
+		err := listInstalledVersions()
+		if err != nil {
+			fmt.Println("failed to list installed versions: %w", err)
+		}
 	},
 }
 

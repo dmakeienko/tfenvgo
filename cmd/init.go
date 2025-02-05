@@ -23,6 +23,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -32,7 +33,13 @@ import (
 
 func initConfig() error {
 	binPath := os.Getenv("HOME") + "/.tfenvgo/bin"
-	os.MkdirAll(binPath, os.ModePerm)
+
+	err := os.MkdirAll(binPath, os.ModePerm)
+
+	if err != nil {
+		return errors.New("failed to create  config")
+	}
+	fmt.Println(binPath + " has been created successfully.")
 
 	terraformBinPath := "export" + " PATH=$PATH:" + binPath
 	shellConfigPath := os.Getenv("HOME") + "/.zshrc"
@@ -47,8 +54,8 @@ func initConfig() error {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		if strings.TrimSpace(scanner.Text()) == terraformBinPath {
-			fmt.Println("No changes will be made. The shell config contains required configuration.")
-			fmt.Println("If you encounter any problems, try to delete line \"" + terraformBinPath + "\" from " + shellConfigPath + " and run \"tfenvgo init\" again.")
+			fmt.Println(Gray + "Shell config contains required configuration. No changes to will be made." + Reset)
+			fmt.Println(Gray + "If you encounter any problems, try to delete line \"" + Yellow + terraformBinPath + Gray + "\" from " + Yellow + shellConfigPath + Gray + " and run \"" + Yellow + "tfenvgo init" + Yellow + "\" again." + Reset)
 			return nil
 		}
 	}
@@ -69,7 +76,7 @@ func initConfig() error {
 	}
 
 	fmt.Println("Shell configuration has been updated. Please restart your shell to apply changes.")
-	return nil
+	return err
 }
 
 // initCmd represents the init command
@@ -78,7 +85,10 @@ var initCmd = &cobra.Command{
 	Short: "Creates required configuration for tfenvgo to work",
 	Long:  "Creates required folders and files and update shell configuration to be able to use tfenvgo.",
 	Run: func(cmd *cobra.Command, args []string) {
-		initConfig()
+		err := initConfig()
+		if err != nil {
+			fmt.Println("failed to create config: %w", err)
+		}
 	},
 }
 
