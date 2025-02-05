@@ -32,11 +32,18 @@ func useVersion(version string) {
 	// check if .tfenvgo/bin/terraform exists
 	terraformPath := terraformBinPath + "/terraform"
 	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
+
 	if _, err := os.Lstat(terraformPath); err == nil {
 		os.Remove(terraformPath)
-		os.Symlink(terraformSelectedPath, terraformPath)
+		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
+			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
+			return
+		}
 	} else {
-		os.Symlink(terraformSelectedPath, terraformPath)
+		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
+			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
+			return
+		}
 	}
 	fmt.Println(Green + "Changed current terraform version to v" + version + Reset)
 }

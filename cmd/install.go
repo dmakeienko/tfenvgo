@@ -51,8 +51,11 @@ func unarchiveZip(archivePath, version string) {
 			return
 		}
 		if f.FileInfo().IsDir() {
-			fmt.Println("creating directory...")
-			os.MkdirAll(filePath, os.ModePerm)
+			fmt.Println("creating directory..." + filePath)
+			err := os.MkdirAll(filePath, os.ModePerm)
+			if err != nil {
+				fmt.Println("failed to create directory: %w", err)
+			}
 			continue
 		}
 
@@ -80,11 +83,11 @@ func unarchiveZip(archivePath, version string) {
 }
 
 func downloadTerraform(version string) error {
-	terraformDownloadURL := terraformReleasesUrl + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
+	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
 	fmt.Println("Downloading " + terraformDownloadURL)
 
 	// Get the data
-	resp, err := http.Get(terraformDownloadURL)
+	resp, err := http.Get(terraformDownloadURL) //nolint
 	if err != nil {
 		return err
 	}
@@ -111,11 +114,14 @@ func downloadTerraform(version string) error {
 func installTerraform(version string) {
 	_, err := os.Stat(terraformVersionPath + "/" + version)
 	if os.IsNotExist(err) {
-		downloadTerraform(version)
+		err := downloadTerraform(version)
+		if err != nil {
+			fmt.Println("failed to download binary: %w", err)
+		}
 	} else {
 		fmt.Println(Yellow + "Version " + version + " is already installed." + Reset)
 	}
-	// useVersion(version)  // Do I need to change version after donwload or use expilicitly?
+	// useVersion(version)  // Do I need to change version after download or use expilicitly?
 }
 
 // installCmd represents the install command

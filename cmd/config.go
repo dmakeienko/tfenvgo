@@ -2,15 +2,13 @@ package cmd
 
 import "os"
 
-const terraformReleasesUrl = "https://releases.hashicorp.com/terraform"
+const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 
-var rootUrl = os.Getenv("HOME") + "/.tfenvgo"
-var terraformBinPath = rootUrl + "/bin"
-var terraformVersionPath = rootUrl + "/versions"
+var rootURL = os.Getenv("HOME") + "/.tfenvgo"
+var terraformBinPath = rootURL + "/bin"
+var terraformVersionPath = rootURL + "/versions"
 var arch = "amd64"
 var osType = "linux"
-
-
 
 // Colors
 var Reset = "\033[0m"
