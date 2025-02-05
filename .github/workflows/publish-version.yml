@@ -40,5 +40,5 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
         run: |
-          npx semantic-release | tee semantic-release.log
+          npx semantic-release
 
