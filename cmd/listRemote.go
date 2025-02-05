@@ -23,35 +23,74 @@ package cmd
 
 import (
 	"fmt"
+	"net/http"
+	"regexp"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/net/html"
 )
+
+func getTerraformVersions() ([]string, error) {
+	resp, err := http.Get(terraformReleasesURL)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch page, status code: %d", resp.StatusCode)
+	}
+
+	var versions []string
+	z := html.NewTokenizer(resp.Body)
+	versionRegex := regexp.MustCompile(`^/terraform/([0-9]+\.[0-9]+\.[0-9]+)/$`)
+
+	for {
+		tt := z.Next()
+		if tt == html.ErrorToken {
+			break
+		}
+		if tt == html.StartTagToken {
+			tagName, hasAttr := z.TagName()
+			if string(tagName) == "a" && hasAttr {
+				for {
+					attrName, attrValue, moreAttr := z.TagAttr()
+					if string(attrName) == "href" {
+						matches := versionRegex.FindStringSubmatch(string(attrValue))
+						if len(matches) == 2 {
+							versions = append(versions, matches[1])
+						}
+					}
+					if !moreAttr {
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// sort.Sort(sort.Reverse(sort.StringSlice(versions))) // Сортуємо у зворотному порядку (від нових до старих)
+	return versions, nil
+}
 
 // listRemoteCmd represents the listRemote command
 var listRemoteCmd = &cobra.Command{
-	Use:   "listRemote",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Use:   "list-remote",
+	Short: "List all available Terraform versions",
+	Long:  "List all available Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("listRemote called")
+		versions, err := getTerraformVersions()
+		if err != nil {
+			fmt.Println("Failed to get versions:", err)
+			return
+		}
+		fmt.Println(Green + "Available stable versions:" + Reset)
+		for _, v := range versions {
+			fmt.Println(v)
+		}
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(listRemoteCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// listRemoteCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// listRemoteCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
