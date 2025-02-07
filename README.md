@@ -18,4 +18,17 @@ TBD
 
 ## Usage
 
-TBD
+### tfenvgo install [version]
+
+Install a specific version of Terraform.
+If no parameter is passed, the version to use is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version files (TBD)**, in that order of precedence. If no argument provided, it will be defaulted to the `latest`.
+
+**Available options:**
+
+* `x.y.z `Semver 2.0.0 string specifying the exact version to install
+* `latest` is a syntax to install latest available *stable* version
+* (**TBD**) `latest:<regex>` is a syntax to install latest version matching regex (used by grep -e)
+* (**TBD**) `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
+* (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+
+### tfenvgo use [version]

@@ -106,13 +106,6 @@ func unarchiveZip(archivePath, version string) error {
 }
 
 func downloadTerraform(version string) error {
-	if version == "latest" {
-		versions, err := getTerraformVersions()
-		if err != nil {
-			fmt.Println("failed to get latest version: %w", err)
-		}
-		version = versions[0]
-	}
 	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
 	fmt.Println("Downloading " + terraformDownloadURL)
 
@@ -151,6 +144,13 @@ func downloadTerraform(version string) error {
 }
 
 func installTerraform(version string) {
+	if version == "latest" {
+		versions, err := getTerraformVersions()
+		if err != nil {
+			fmt.Println("failed to get latest version: %w", err)
+		}
+		version = versions[0]
+	}
 	_, err := os.Stat(terraformVersionPath + "/" + version)
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
@@ -166,9 +166,18 @@ func installTerraform(version string) {
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install",
-	Short: "Installs a specific Terraform version",
+	Short: "Install a specific Terraform version",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		installTerraform(args[0])
+		version := "latest"
+		versionFromEnv, versionFromEnvPresent := os.LookupEnv("TFENVGO_TERRAFORM_VERSION")
+		if versionFromEnvPresent {
+			version = versionFromEnv
+		}
+		if len(args) > 0 {
+			version = args[0]
+		}
+		installTerraform(version)
 	},
 }
 
