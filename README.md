@@ -25,10 +25,20 @@ If no parameter is passed, the version to use is resolved automatically via **TF
 
 **Available options:**
 
-* `x.y.z `Semver 2.0.0 string specifying the exact version to install
+* `x.y.z` Semver 2.0.0 string specifying the exact version to install
 * `latest` is a syntax to install latest available *stable* version
-* (**TBD**) `latest:<regex>` is a syntax to install latest version matching regex (used by grep -e)
+* (**TBD**) `latest:<regex>` is a syntax to install latest version matching regex
 * (**TBD**) `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
 * (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 
 ### tfenvgo use [version]
+
+### tfenv uninstall [version]
+
+Uninstall a specific version of Terraform.
+
+**Available options:**
+
+* `x.y.z` Semver 2.0.0 string specifying the exact version to uninstall
+* `latest` is a syntax to uninstall latest present version
+* (**TBD**) `latest:<regex>` is a syntax to uninstall latest version matching regex

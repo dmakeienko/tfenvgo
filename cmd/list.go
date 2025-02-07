@@ -31,10 +31,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func listInstalledVersions() error {
+func listInstalledVersions() ([]string, error) {
 	files, err := os.ReadDir(terraformVersionPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var versions []*semver.Version
@@ -52,11 +52,12 @@ func listInstalledVersions() error {
 
 	sort.Sort(sort.Reverse(semver.Collection(versions))) // Sort in descending order, top one is always the latest
 
+	var versionStrings []string
 	for _, v := range versions {
-		fmt.Println(v)
+		versionStrings = append(versionStrings, v.String())
 	}
 
-	return nil
+	return versionStrings, nil
 }
 
 // listCmd represents the list command
@@ -64,9 +65,14 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := listInstalledVersions()
+		versions, err := listInstalledVersions()
 		if err != nil {
 			fmt.Println("failed to list installed versions: %w", err)
+			return
+		}
+		fmt.Println(Green + "Installed Terraform versions:" + Reset)
+		for _, v := range versions {
+			fmt.Println(v)
 		}
 	},
 }
