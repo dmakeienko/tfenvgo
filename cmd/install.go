@@ -144,7 +144,7 @@ func downloadTerraform(version string) error {
 }
 
 func installTerraform(version string) {
-	if version == "latest" {
+	if version == latestTerraformArgument {
 		versions, err := getTerraformVersions()
 		if err != nil {
 			fmt.Println("failed to get latest version: %w", err)
@@ -169,7 +169,7 @@ var installCmd = &cobra.Command{
 	Short: "Install a specific Terraform version",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := "latest"
+		version := latestTerraformArgument
 		versionFromEnv, versionFromEnvPresent := os.LookupEnv("TFENVGO_TERRAFORM_VERSION")
 		if versionFromEnvPresent {
 			version = versionFromEnv

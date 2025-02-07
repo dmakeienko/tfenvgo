@@ -29,7 +29,7 @@ import (
 )
 
 func uninstallTerraform(version string) {
-	if version == "latest" {
+	if version == latestTerraformArgument {
 		versions, err := listInstalledVersions()
 		if err != nil {
 			fmt.Println("failed to get latest version: %w", err)

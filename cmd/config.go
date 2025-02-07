@@ -3,6 +3,7 @@ package cmd
 import "os"
 
 const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
+const latestTerraformArgument = "latest"
 
 var rootURL = os.Getenv("HOME") + "/.tfenvgo"
 var terraformBinPath = rootURL + "/bin"
