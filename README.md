@@ -31,12 +31,6 @@ If no parameter is passed, the version to install is resolved automatically via 
 * (**TBD**) `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
 * (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 
-**Environment variables:**
-
-`TFENVGO_ARCH` - specify to install binary for different architecture then your own.
-
-`TFENVGO_OS_TYPE` - specify to install binary for different os_type then your own.
-
 ### tfenvgo use [version]
 
 Switch a version to use.

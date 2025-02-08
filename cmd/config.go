@@ -1,9 +1,6 @@
 package cmd
 
-import (
-	"os"
-	"runtime"
-)
+import "os"
 
 const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 const latestTerraformArgument = "latest"
@@ -11,9 +8,8 @@ const latestTerraformArgument = "latest"
 var rootURL = os.Getenv("HOME") + "/.tfenvgo"
 var terraformBinPath = rootURL + "/bin"
 var terraformVersionPath = rootURL + "/versions"
-
-var defaultArch = runtime.GOARCH
-var defaultOSType = runtime.GOOS
+var arch = "amd64"
+var osType = "linux"
 
 // Colors
 var Reset = "\033[0m"
@@ -27,6 +23,4 @@ var Gray = "\033[37m"
 var White = "\033[97m"
 
 // Environment variables
-const archEnvKey = "TFENVGO_ARCH"
-const osTypeEnvKey = "TFENVGO_OS_TYPE"
-const terraformVersionEnv = "TFENVGO_TERRAFORM_VERSION"
+// var TFENVGO_TERRAFORM_VERSION = os.Getenv("TFENVGO_TERRAFORM_VERSION")
