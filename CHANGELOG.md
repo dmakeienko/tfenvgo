@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/dmakeienko/tfenvgo/compare/v1.1.0...v1.2.0) (2025-02-08)
+
+
+### Features
+
+* `install` command now supports `TFENVGO_ARCH` and `TFENVGO_OS_TYPE` env variables that allow to download Terraform binary for a different os/arch ([4d87bbc](https://github.com/dmakeienko/tfenvgo/commit/4d87bbcbd4838b4bc89c00e3ea28c96d80e76224))
+
 # [1.1.0](https://github.com/dmakeienko/tfenvgo/compare/v1.0.1...v1.1.0) (2025-02-08)
 
 
