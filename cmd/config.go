@@ -29,3 +29,4 @@ var White = "\033[97m"
 // Environment variables
 const archEnvKey = "TFENVGO_ARCH"
 const osTypeEnvKey = "TFENVGO_OS_TYPE"
+const terraformVersionEnv = "TFENVGO_TERRAFORM_VERSION"

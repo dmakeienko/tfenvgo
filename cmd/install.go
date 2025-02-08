@@ -140,8 +140,9 @@ func downloadTerraform(version string) error {
 	if err != nil {
 		log.Printf("Failed to unarchive: %v", err)
 	}
-	println("Removing" + filepath)
+	println("Removing " + filepath)
 	os.Remove(filepath)
+	println(filepath + " removed")
 	return err
 }
 
@@ -171,11 +172,7 @@ var installCmd = &cobra.Command{
 	Short: "Install a specific Terraform version",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := latestTerraformArgument
-		versionFromEnv, versionFromEnvPresent := os.LookupEnv("TFENVGO_TERRAFORM_VERSION")
-		if versionFromEnvPresent {
-			version = versionFromEnv
-		}
+		version := getEnv(terraformVersionEnv, latestTerraformArgument)
 		if len(args) > 0 {
 			version = args[0]
 		}
