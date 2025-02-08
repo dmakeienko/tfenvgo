@@ -3,6 +3,7 @@ package cmd
 import "os"
 
 const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
+const latestTerraformArgument = "latest"
 
 var rootURL = os.Getenv("HOME") + "/.tfenvgo"
 var terraformBinPath = rootURL + "/bin"
@@ -20,3 +21,6 @@ var Magenta = "\033[35m"
 var Cyan = "\033[36m"
 var Gray = "\033[37m"
 var White = "\033[97m"
+
+// Environment variables
+// var TFENVGO_TERRAFORM_VERSION = os.Getenv("TFENVGO_TERRAFORM_VERSION")
