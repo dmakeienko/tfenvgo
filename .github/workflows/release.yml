@@ -38,5 +38,4 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
-          binary_name: "tfenvgo_${{ env.VERSION }}_linux_amd64"
           release_tag: ${{ env.VERSION }}
