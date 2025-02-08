@@ -106,6 +106,8 @@ func unarchiveZip(archivePath, version string) error {
 }
 
 func downloadTerraform(version string) error {
+	osType := getEnv(archEnvKey, defaultOSType)
+	arch := getEnv(osTypeEnvKey, defaultArch)
 	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
 	fmt.Println("Downloading " + terraformDownloadURL)
 
