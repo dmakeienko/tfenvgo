@@ -60,7 +60,6 @@ func listInstalledVersions() ([]string, error) {
 	return versionStrings, nil
 }
 
-// listCmd represents the list command
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed Terraform versions",

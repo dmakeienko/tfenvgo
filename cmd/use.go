@@ -29,6 +29,13 @@ import (
 )
 
 func useVersion(version string) {
+	if version == latestTerraformArgument {
+		versions, err := getTerraformVersions()
+		if err != nil {
+			fmt.Println("failed to get latest version: %w", err)
+		}
+		version = versions[0]
+	}
 	// check if .tfenvgo/bin/terraform exists
 	terraformPath := terraformBinPath + "/terraform"
 	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
@@ -48,12 +55,20 @@ func useVersion(version string) {
 	fmt.Println(Green + "Changed current terraform version to v" + version + Reset)
 }
 
-// useCmd represents the use command
 var useCmd = &cobra.Command{
 	Use:   "use",
-	Short: "Changes the current Terraform version",
+	Short: "Change the current Terraform version",
+	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		useVersion(args[0])
+		version := latestTerraformArgument
+		versionFromEnv, versionFromEnvPresent := os.LookupEnv("TFENVGO_TERRAFORM_VERSION")
+		if versionFromEnvPresent {
+			version = versionFromEnv
+		}
+		if len(args) > 0 {
+			version = args[0]
+		}
+		useVersion(version)
 	},
 }
 
