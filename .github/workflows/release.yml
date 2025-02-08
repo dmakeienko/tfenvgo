@@ -4,10 +4,18 @@ on:
     types:
       - created
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
-  release:
-    name: Build and Upload binary
+  release-linux-amd64:
+    name: release linux/amd64
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [amd64]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,14 +28,15 @@ jobs:
         with:
           go-version: '1.23.5'
 
-      - name: Build
-        run: |
-          VERSION=$(git describe --tags --abbrev=0)
-          go build -ldflags="-X github.com/spf13/tfenvgo/cmd.Version=$VERSION"
+      - name: Set version
+        run: echo "GITHUB_SHA_SHORT=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
 
-      - name: Upload binary
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          VERSION=$(git describe --tags --abbrev=0)
-          gh release upload $VERSION tfenvgo
+      - name: Build
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=$VERSION"
+          binary_name: "tfenvgo_$VERSION_linux_amd64"
+          release_tag: "$VERSION"
