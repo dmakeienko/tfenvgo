@@ -2,6 +2,8 @@
 
 Terraform version manager [tfenv](https://github.com/tfutils/tfenv) written in Go.
 
+> WARNING: this is my first project written in Go to learn it. It is inpired by tfenv, but is written without inspecting source, only documentation is used.
+
 ## Support
 
 Currently tfenv supports the following OSes
