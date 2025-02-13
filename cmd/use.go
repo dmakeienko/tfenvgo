@@ -45,9 +45,17 @@ func useVersion(version string) {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
 			return
 		}
+		if err := os.Chmod(terraformPath, 0775); err != nil {
+			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
+			return
+		}
 	} else {
 		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
+			return
+		}
+		if err := os.Chmod(terraformPath, 0775); err != nil {
+			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
 			return
 		}
 	}
