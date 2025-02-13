@@ -147,13 +147,6 @@ func downloadTerraform(version string) error {
 }
 
 func installTerraform(version string) {
-	if version == latestTerraformArgument {
-		versions, err := getTerraformVersions()
-		if err != nil {
-			fmt.Println("failed to get latest version: %w", err)
-		}
-		version = versions[0]
-	}
 	_, err := os.Stat(terraformVersionPath + "/" + version)
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
@@ -175,6 +168,18 @@ var installCmd = &cobra.Command{
 		version := getEnv(terraformVersionEnv, latestTerraformArgument)
 		if len(args) > 0 {
 			version = args[0]
+		}
+		switch version {
+		case latestTerraformArgument:
+			versions, err := getTerraformVersions()
+			if err != nil {
+				fmt.Println("failed to get latest version: %w", err)
+			}
+			version = versions[0]
+		case "min-required":
+			version, _ = getMinRequired()
+		case "latest-allowed":
+			version, _ = getLatestAllowed()
 		}
 		installTerraform(version)
 	},

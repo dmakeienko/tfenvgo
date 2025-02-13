@@ -28,8 +28,8 @@ If no parameter is passed, the version to install is resolved automatically via 
 * `x.y.z` Semver 2.0.0 string specifying the exact version to install
 * `latest` is a syntax to install latest available *stable* version
 * (**TBD**) `latest:<regex>` is a syntax to install latest version matching regex
-* (**TBD**) `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
-* (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
+* `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 
 **Environment variables:**
 
