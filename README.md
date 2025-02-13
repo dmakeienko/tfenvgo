@@ -47,7 +47,8 @@ If no parameter is passed, the version to use is resolved automatically via **TF
 * `x.y.z` Semver 2.0.0 string specifying the exact version to use
 * `latest` is a syntax to use latest installed *stable* version
 * (**TBD**) `latest:<regex>` is a syntax to use latest version matching regex
-* (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `latest-allowed` is a syntax to scan your Terraform files to detect which version is latest allowed
 
 ### tfenv uninstall [version]
 

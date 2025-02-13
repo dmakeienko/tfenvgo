@@ -29,17 +29,16 @@ import (
 )
 
 func useVersion(version string) {
-	if version == latestTerraformArgument {
-		versions, err := getTerraformVersions()
-		if err != nil {
-			fmt.Println("failed to get latest version: %w", err)
-		}
-		version = versions[0]
-	}
 	// check if .tfenvgo/bin/terraform exists
 	terraformPath := terraformBinPath + "/terraform"
 	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
-
+	if _, err := os.Stat(terraformSelectedPath); err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println(Yellow + "Terraform v" + version + " is not installed" + Reset)
+			fmt.Println(Yellow + "Use " + "tfenvgo install " + version + " to install it" + Reset)
+			return
+		}
+	}
 	if _, err := os.Lstat(terraformPath); err == nil {
 		os.Remove(terraformPath)
 		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
@@ -63,6 +62,18 @@ var useCmd = &cobra.Command{
 		version := getEnv(terraformVersionEnv, latestTerraformArgument)
 		if len(args) > 0 {
 			version = args[0]
+		}
+		switch version {
+		case latestTerraformArgument:
+			versions, err := getTerraformVersions()
+			if err != nil {
+				fmt.Println("failed to get latest version: %w", err)
+			}
+			version = versions[0]
+		case "min-required":
+			version, _ = getMinRequired()
+		case "latest-allowed":
+			version, _ = getLatestAllowed()
 		}
 		useVersion(version)
 	},
