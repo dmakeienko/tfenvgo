@@ -29,3 +29,10 @@ var White = "\033[97m"
 const archEnvKey = "TFENVGO_ARCH"
 const osTypeEnvKey = "TFENVGO_OS_TYPE"
 const terraformVersionEnv = "TFENVGO_TERRAFORM_VERSION"
+
+// Arguments
+const (
+	latestArg        = "latest"
+	latestAllowedArg = "latest-allowed"
+	minRequiredArg   = "min-required"
+)

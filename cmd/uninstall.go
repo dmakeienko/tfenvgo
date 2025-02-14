@@ -42,14 +42,14 @@ var uninstallCmd = &cobra.Command{
 		version := args[0]
 
 		allowedVersions := map[string]bool{
-			"latest": true,
+			latestArg: true,
 		}
 
 		if validateArg(version, allowedVersions) != nil {
 			return
 		}
 
-		if version == "latest" {
+		if version == latestArg {
 			versions, err := listInstalledVersions()
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)

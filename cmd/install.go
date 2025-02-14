@@ -172,9 +172,9 @@ var installCmd = &cobra.Command{
 		}
 
 		allowedVersions := map[string]bool{
-			"latest":         true,
-			"latest-allowed": true,
-			"min-required":   true,
+			latestArg:        true,
+			latestAllowedArg: true,
+			minRequiredArg:   true,
 		}
 
 		if validateArg(version, allowedVersions) != nil {
@@ -182,15 +182,15 @@ var installCmd = &cobra.Command{
 		}
 
 		switch version {
-		case "latest":
+		case latestArg:
 			versions, err := getTerraformVersions()
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}
 			version = versions[0]
-		case "min-required":
+		case minRequiredArg:
 			version, _ = getMinRequired()
-		case "latest-allowed":
+		case latestAllowedArg:
 			version, _ = getLatestAllowed()
 		}
 		installTerraform(version)
