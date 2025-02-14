@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/Masterminds/semver/v3"
 )
@@ -139,4 +140,21 @@ func getLatestAllowed() (string, error) {
 	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getTerraformVersions() returns versions in desc order, sort it to ensure it
 
 	return validVersions[0].String(), nil // Return the highest matching version
+}
+
+func validateArg(arg string, allowedVersions map[string]bool) error {
+	if allowedVersions[arg] {
+		return nil
+	}
+
+	// Check if it's a valid Semver version
+	if _, err := semver.NewVersion(arg); err != nil {
+		validArgs := make([]string, 0, len(allowedVersions))
+		for k := range allowedVersions {
+			validArgs = append(validArgs, k)
+		}
+		fmt.Println(Red + "Invalid version provided. Allowed values are: " + strings.Join(validArgs, ", ") + " or a valid semver version" + Reset)
+		return err
+	}
+	return nil
 }

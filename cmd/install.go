@@ -109,7 +109,7 @@ func downloadTerraform(version string) error {
 	osType := getEnv(archEnvKey, defaultOSType)
 	arch := getEnv(osTypeEnvKey, defaultArch)
 	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
-	fmt.Println("Downloading " + terraformDownloadURL)
+	fmt.Println(Yellow + "Downloading " + terraformDownloadURL + Reset)
 
 	// Get the data
 	resp, err := http.Get(terraformDownloadURL) //nolint
@@ -126,7 +126,7 @@ func downloadTerraform(version string) error {
 		return err
 	}
 	defer out.Close()
-	fmt.Println("Downloaded file to " + filepath)
+	fmt.Println(Yellow + "Downloaded file to " + filepath + Reset)
 
 	// Write the body to file
 	_, err = io.Copy(out, resp.Body)
@@ -138,11 +138,11 @@ func downloadTerraform(version string) error {
 	err = unarchiveZip(filepath, version)
 
 	if err != nil {
-		log.Printf("Failed to unarchive: %v", err)
+		log.Printf(Red+"Failed to unarchive: %v", err)
 	}
-	println("Removing " + filepath)
+	fmt.Println(Yellow + "Removing " + filepath + Reset)
 	os.Remove(filepath)
-	println(filepath + " removed")
+	fmt.Println(Yellow + filepath + " removed")
 	return err
 }
 
@@ -151,10 +151,11 @@ func installTerraform(version string) {
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
 		if err != nil {
-			fmt.Println("failed to download binary: %w", err)
+			fmt.Println(Red+"failed to download binary: %w", err)
 		}
+		fmt.Println(Green + "Terraform v" + version + " has been installed" + Reset)
 	} else {
-		fmt.Println(Yellow + "Version " + version + " is already installed." + Reset)
+		fmt.Println(Yellow + "Terraform v" + version + " is already installed." + Reset)
 	}
 	// useVersion(version)  // Do I need to change version after download or use expilicitly?
 }
@@ -169,6 +170,17 @@ var installCmd = &cobra.Command{
 		if len(args) > 0 {
 			version = args[0]
 		}
+
+		allowedVersions := map[string]bool{
+			"latest":         true,
+			"latest-allowed": true,
+			"min-required":   true,
+		}
+
+		if validateArg(version, allowedVersions) != nil {
+			return
+		}
+
 		switch version {
 		case "latest":
 			versions, err := getTerraformVersions()

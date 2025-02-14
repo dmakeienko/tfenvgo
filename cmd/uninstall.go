@@ -40,6 +40,15 @@ var uninstallCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		version := args[0]
+
+		allowedVersions := map[string]bool{
+			"latest": true,
+		}
+
+		if validateArg(version, allowedVersions) != nil {
+			return
+		}
+
 		if version == "latest" {
 			versions, err := listInstalledVersions()
 			if err != nil {

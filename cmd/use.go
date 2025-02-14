@@ -71,6 +71,17 @@ var useCmd = &cobra.Command{
 		if len(args) > 0 {
 			version = args[0]
 		}
+
+		allowedVersions := map[string]bool{
+			"latest":         true,
+			"latest-allowed": true,
+			"min-required":   true,
+		}
+
+		if validateArg(version, allowedVersions) != nil {
+			return
+		}
+
 		switch version {
 		case "latest":
 			versions, err := getTerraformVersions()
