@@ -166,7 +166,7 @@ var installCmd = &cobra.Command{
 	Short: "Install a specific Terraform version",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := getEnv(terraformVersionEnv, "latest")
+		version := getEnv(terraformVersionEnvKey, "latest")
 		if len(args) == 0 {
 			version, _ = readVersionFromFile()
 		} else if len(args) > 0 {

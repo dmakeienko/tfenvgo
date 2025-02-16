@@ -67,7 +67,7 @@ var useCmd = &cobra.Command{
 	Short: "Change the current Terraform version",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := getEnv(terraformVersionEnv, "latest")
+		version := getEnv(terraformVersionEnvKey, "latest")
 		if len(args) == 0 {
 			version, _ = readVersionFromFile()
 		} else if len(args) > 0 {
