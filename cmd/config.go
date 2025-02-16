@@ -36,3 +36,5 @@ const (
 	latestAllowedArg = "latest-allowed"
 	minRequiredArg   = "min-required"
 )
+
+const terraformVersionFilename string = ".terraform-version"

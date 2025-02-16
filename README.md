@@ -21,7 +21,7 @@ TBD
 ### tfenvgo install [version]
 
 Install a specific version of Terraform.
-If no parameter is passed, the version to install is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file (TBD)**, in that order of precedence. If no argument provided, it will be defaulted to the `latest`.
+If no parameter is passed, the version to install is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file**, in that order of precedence. If no argument provided, it will be defaulted to the `latest`.
 
 **Available options:**
 
@@ -40,7 +40,7 @@ If no parameter is passed, the version to install is resolved automatically via 
 ### tfenvgo use [version]
 
 Switch a version to use.
-If no parameter is passed, the version to use is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file (TBD)**, in that order of precedence, defaulting to `latest` if none are found.
+If no parameter is passed, the version to use is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file**, in that order of precedence, defaulting to `latest` if none are found.
 
 **Available options:**
 

@@ -167,7 +167,9 @@ var installCmd = &cobra.Command{
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		version := getEnv(terraformVersionEnv, "latest")
-		if len(args) > 0 {
+		if len(args) == 0 {
+			version, _ = readVersionFromFile()
+		} else if len(args) > 0 {
 			version = args[0]
 		}
 

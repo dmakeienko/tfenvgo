@@ -158,3 +158,33 @@ func validateArg(arg string, allowedVersions map[string]bool) error {
 	}
 	return nil
 }
+
+func readVersionFromFile() (string, error) {
+	// Get current directory
+	terraformVersionRegex := regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("error getting current directory: %w", err)
+	}
+	path := filepath.Join(cwd, terraformVersionFilename)
+	// Open file for reading
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	// Scan file line by line
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if matches := terraformVersionRegex.FindStringSubmatch(line); matches != nil {
+			terraformVersion := matches[0]
+			return terraformVersion, err // Stop walking once we find the version, so it will be only first match
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return "", err
+	}
+	return "", err
+}
