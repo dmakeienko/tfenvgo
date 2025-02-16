@@ -59,3 +59,17 @@ Uninstall a specific version of Terraform.
 * `x.y.z` Semver 2.0.0 string specifying the exact version to uninstall
 * `latest` is a syntax to uninstall latest present version
 * (**TBD**) `latest:<regex>` is a syntax to uninstall latest version matching regex
+
+## Environment variables
+
+`TFENVGO_ARCH`
+
+Specifies architecture. Default architecture is defined during compilation. Override to download terraform binary for other architecture.
+
+`TFENVGO_OS_TYPE`
+
+Specifies OS type. Default OS type is defined during compilation. Override to download terraform binary for OS.
+
+`TFENVGO_TERRAFORM_VERSION`
+
+If not empty string, this variable overrides Terraform version provided by `.terraform-version` file and commands `tfenvgo install`, `tfenvgo use`.
