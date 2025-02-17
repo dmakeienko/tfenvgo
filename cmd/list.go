@@ -69,9 +69,18 @@ var listCmd = &cobra.Command{
 			fmt.Println("failed to list installed versions: %w", err)
 			return
 		}
+		currentTerraformVersion, err := getCurrentTerraformVersion()
+		if err != nil {
+			return
+		}
+
 		fmt.Println(Green + "Installed Terraform versions:" + Reset)
 		for _, v := range versions {
-			fmt.Println(v)
+			if v == currentTerraformVersion {
+				fmt.Println(Green + "---> " + v + " (set by " + terraformBinPath + ")" + Reset)
+			} else {
+				fmt.Println("     " + Gray + v + Reset)
+			}
 		}
 	},
 }

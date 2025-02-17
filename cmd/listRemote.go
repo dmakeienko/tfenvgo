@@ -75,8 +75,8 @@ func getTerraformVersions() ([]string, error) {
 // listRemoteCmd represents the listRemote command
 var listRemoteCmd = &cobra.Command{
 	Use:   "list-remote",
-	Short: "List all available Terraform versions",
-	Long:  "List all available Terraform versions",
+	Short: "List all available (stable) Terraform versions",
+	Long:  "List all available (stable) Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
 		versions, err := getTerraformVersions()
 		if err != nil {
@@ -85,7 +85,7 @@ var listRemoteCmd = &cobra.Command{
 		}
 		fmt.Println(Green + "Available stable versions:" + Reset)
 		for _, v := range versions {
-			fmt.Println(v)
+			fmt.Println(Gray + v + Reset)
 		}
 	},
 }

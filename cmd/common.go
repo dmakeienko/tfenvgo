@@ -188,3 +188,14 @@ func readVersionFromFile() (string, error) {
 	}
 	return "", err
 }
+
+func getCurrentTerraformVersion() (string, error) {
+	currentTerraformBinPath, err := os.Readlink(terraformBinPath + "/" + "terraform")
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve symlink to current terraform version")
+	}
+	currentTerraformVersionPath := strings.Split(currentTerraformBinPath, "/")
+	currentTerraforVersion := currentTerraformVersionPath[len(currentTerraformVersionPath)-2]
+
+	return currentTerraforVersion, err
+}
