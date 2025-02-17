@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/dmakeienko/tfenvgo/compare/v1.3.0...v1.4.0) (2025-02-17)
+
+
+### Bug Fixes
+
+* fix behaviour of `TFENVGO_TERRAFORM_VERSION` env var and `.terraform-version` file ([f6ed64e](https://github.com/dmakeienko/tfenvgo/commit/f6ed64e4e962bd858b098d54008c25320bef4f5c))
+
+
+### Features
+
+* show current selected version using `tfenvgo list` command ([d2d6033](https://github.com/dmakeienko/tfenvgo/commit/d2d60333efe50e7af04e53b4279862549543a71f))
+
 # [1.3.0](https://github.com/dmakeienko/tfenvgo/compare/v1.2.0...v1.3.0) (2025-02-17)
 
 
