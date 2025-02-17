@@ -39,3 +39,96 @@ jobs:
           goarch: ${{ matrix.goarch }}
           ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
           release_tag: ${{ env.VERSION }}
+
+  release-linux-arm64:
+    name: release linux/arm64
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux]
+        goarch: [arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # get all tags to get latest version
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.5'
+
+      - name: Set version
+        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Build
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
+          release_tag: ${{ env.VERSION }}          
+
+  release-darwin-amd64:
+    name: release darwin/amd64
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [darwin]
+        goarch: [amd64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # get all tags to get latest version
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.5'
+
+      - name: Set version
+        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Build
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
+          release_tag: ${{ env.VERSION }}  
+
+  release-darwin-arm64:
+    name: release darwin/arm64
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [darwin]
+        goarch: [arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # get all tags to get latest version
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.5'
+
+      - name: Set version
+        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
+
+      - name: Build
+        uses: wangyoucao577/go-release-action@v1
+        with:
+          github_token: ${{ secrets.RELEASE_TOKEN }}
+          goos: ${{ matrix.goos }}
+          goarch: ${{ matrix.goarch }}
+          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
+          release_tag: ${{ env.VERSION }}          
