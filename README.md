@@ -23,15 +23,15 @@ TBD
 ### tfenvgo install [version]
 
 Install a specific version of Terraform.
-If no parameter is passed, the version to install is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file (TBD)**, in that order of precedence. If no argument provided, it will be defaulted to the `latest`.
+If no parameter is passed, the version to install is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file**, in that order of precedence. If no argument provided, it will be defaulted to the `latest`.
 
 **Available options:**
 
 * `x.y.z` Semver 2.0.0 string specifying the exact version to install
 * `latest` is a syntax to install latest available *stable* version
 * (**TBD**) `latest:<regex>` is a syntax to install latest version matching regex
-* (**TBD**) `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
-* (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
+* `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 
 **Environment variables:**
 
@@ -42,14 +42,15 @@ If no parameter is passed, the version to install is resolved automatically via 
 ### tfenvgo use [version]
 
 Switch a version to use.
-If no parameter is passed, the version to use is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file (TBD)**, in that order of precedence, defaulting to `latest` if none are found.
+If no parameter is passed, the version to use is resolved automatically via **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version file**, in that order of precedence, defaulting to `latest` if none are found.
 
 **Available options:**
 
 * `x.y.z` Semver 2.0.0 string specifying the exact version to use
 * `latest` is a syntax to use latest installed *stable* version
 * (**TBD**) `latest:<regex>` is a syntax to use latest version matching regex
-* (**TBD**) `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
+* `latest-allowed` is a syntax to scan your Terraform files to detect which version is latest allowed
 
 ### tfenv uninstall [version]
 
@@ -60,3 +61,17 @@ Uninstall a specific version of Terraform.
 * `x.y.z` Semver 2.0.0 string specifying the exact version to uninstall
 * `latest` is a syntax to uninstall latest present version
 * (**TBD**) `latest:<regex>` is a syntax to uninstall latest version matching regex
+
+## Environment variables
+
+`TFENVGO_ARCH`
+
+Specifies architecture. Default architecture is defined during compilation. Override to download terraform binary for other architecture.
+
+`TFENVGO_OS_TYPE`
+
+Specifies OS type. Default OS type is defined during compilation. Override to download terraform binary for OS.
+
+`TFENVGO_TERRAFORM_VERSION`
+
+If not empty string, this variable overrides Terraform version provided by `.terraform-version` file and commands `tfenvgo install`, `tfenvgo use`.

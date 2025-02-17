@@ -29,26 +29,33 @@ import (
 )
 
 func useVersion(version string) {
-	if version == latestTerraformArgument {
-		versions, err := getTerraformVersions()
-		if err != nil {
-			fmt.Println("failed to get latest version: %w", err)
-		}
-		version = versions[0]
-	}
 	// check if .tfenvgo/bin/terraform exists
 	terraformPath := terraformBinPath + "/terraform"
 	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
-
+	if _, err := os.Stat(terraformSelectedPath); err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println(Yellow + "Terraform v" + version + " is not installed" + Reset)
+			fmt.Println(Yellow + "Use " + "tfenvgo install " + version + " to install it" + Reset)
+			return
+		}
+	}
 	if _, err := os.Lstat(terraformPath); err == nil {
 		os.Remove(terraformPath)
 		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
 			return
 		}
+		if err := os.Chmod(terraformPath, 0775); err != nil {
+			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
+			return
+		}
 	} else {
 		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
+			return
+		}
+		if err := os.Chmod(terraformPath, 0775); err != nil {
+			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
 			return
 		}
 	}
@@ -60,9 +67,34 @@ var useCmd = &cobra.Command{
 	Short: "Change the current Terraform version",
 	Args:  cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := getEnv(terraformVersionEnv, latestTerraformArgument)
-		if len(args) > 0 {
+		version := getEnv(terraformVersionEnvKey, "latest")
+		if len(args) == 0 {
+			version, _ = readVersionFromFile()
+		} else if len(args) > 0 {
 			version = args[0]
+		}
+
+		allowedVersions := map[string]bool{
+			latestArg:        true,
+			latestAllowedArg: true,
+			minRequiredArg:   true,
+		}
+
+		if validateArg(version, allowedVersions) != nil {
+			return
+		}
+
+		switch version {
+		case latestArg:
+			versions, err := getTerraformVersions()
+			if err != nil {
+				fmt.Println("failed to get latest version: %w", err)
+			}
+			version = versions[0]
+		case minRequiredArg:
+			version, _ = getMinRequired()
+		case latestAllowedArg:
+			version, _ = getLatestAllowed()
 		}
 		useVersion(version)
 	},

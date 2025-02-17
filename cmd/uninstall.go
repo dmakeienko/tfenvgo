@@ -29,13 +29,6 @@ import (
 )
 
 func uninstallTerraform(version string) {
-	if version == latestTerraformArgument {
-		versions, err := listInstalledVersions()
-		if err != nil {
-			fmt.Println("failed to get latest version: %w", err)
-		}
-		version = versions[0]
-	}
 	os.RemoveAll(terraformVersionPath + "/" + version)
 	fmt.Println(Yellow + "Uninstalled Terraform version v" + version + Reset)
 }
@@ -46,7 +39,24 @@ var uninstallCmd = &cobra.Command{
 	Short: "Uninstall a specific Terraform version",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		uninstallTerraform(args[0])
+		version := args[0]
+
+		allowedVersions := map[string]bool{
+			latestArg: true,
+		}
+
+		if validateArg(version, allowedVersions) != nil {
+			return
+		}
+
+		if version == latestArg {
+			versions, err := listInstalledVersions()
+			if err != nil {
+				fmt.Println("failed to get latest version: %w", err)
+			}
+			version = versions[0]
+		}
+		uninstallTerraform(version)
 	},
 }
 

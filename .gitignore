@@ -26,3 +26,7 @@ go.work.sum
 
 # vscode
 .vscode
+
+# Terraform files used for tests
+*.tf
+.terraform-version
