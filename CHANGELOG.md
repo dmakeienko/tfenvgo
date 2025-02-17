@@ -1,3 +1,19 @@
+# [1.3.0](https://github.com/dmakeienko/tfenvgo/compare/v1.2.0...v1.3.0) (2025-02-17)
+
+
+### Bug Fixes
+
+* "tfenvgo use" didnt set up correct permissions for the selected terraform version ([937f026](https://github.com/dmakeienko/tfenvgo/commit/937f02650da2ace974b4a12f412a983d352c204d))
+* goconst ([07ab704](https://github.com/dmakeienko/tfenvgo/commit/07ab7043e82d2c72b7776b76745977eeaa8672cc))
+
+
+### Features
+
+* "tfenvgo install" now supports `min-required` and `latest-allowed` ([7cd421e](https://github.com/dmakeienko/tfenvgo/commit/7cd421e1de74b5fdcb7fb45f6d3ace300be879ab))
+* "tfenvgo use" now supports `min-required` and `latest-allowed` ([1bf7713](https://github.com/dmakeienko/tfenvgo/commit/1bf7713b25079219e1212e3ddb121bde82899549))
+* add arg validation to the `use`, `install`, `uninstall`; cosmetic changes in output ([3d9944b](https://github.com/dmakeienko/tfenvgo/commit/3d9944b9656a6b53a3e20709a8f49fe297819277))
+* implement support for `.terraform-version` file ([74e93c1](https://github.com/dmakeienko/tfenvgo/commit/74e93c1a32638e567bf2ca4e9f09307e7586ab37))
+
 # [1.2.0](https://github.com/dmakeienko/tfenvgo/compare/v1.1.0...v1.2.0) (2025-02-08)
 
 
