@@ -90,15 +90,25 @@ var useCmd = &cobra.Command{
 
 		switch version {
 		case latestArg:
-			versions, err := getRemoteTerraformVersions()
+			versions, err := getLocalTerraformVersions()
 			if err != nil {
-				fmt.Println("failed to get latest version: %w", err)
+				fmt.Println("failed to use latest version: %w", err)
 			}
 			version = versions[0]
 		case minRequiredArg:
-			version, _ = getMinRequired()
+			minRequiredVersion, err := getMinRequired("local")
+			if err != nil {
+				fmt.Println(Red + "Failed to use minimum required version: " + err.Error() + Reset)
+				return
+			}
+			version = minRequiredVersion
 		case latestAllowedArg:
-			version, _ = getLatestAllowed()
+			latestAllowedVersion, err := getLatestAllowed("local")
+			if err != nil {
+				fmt.Println(Red + "Failed to use latest allowed version: " + err.Error() + Reset)
+				return
+			}
+			version = latestAllowedVersion
 		}
 		useVersion(version)
 	},

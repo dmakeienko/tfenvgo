@@ -195,9 +195,19 @@ var installCmd = &cobra.Command{
 			}
 			version = versions[0]
 		case minRequiredArg:
-			version, _ = getMinRequired()
+			minRequiredVersion, err := getMinRequired("remote")
+			if err != nil {
+				fmt.Println(Red + "Failed to get minimum required version: " + err.Error() + Reset)
+				return
+			}
+			version = minRequiredVersion
 		case latestAllowedArg:
-			version, _ = getLatestAllowed()
+			latestAllowedVersion, err := getLatestAllowed("remote")
+			if err != nil {
+				fmt.Println(Red + "Failed to get latest allowed version: " + err.Error() + Reset)
+				return
+			}
+			version = latestAllowedVersion
 		}
 		installTerraform(version)
 	},
