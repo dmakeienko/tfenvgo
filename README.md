@@ -1,12 +1,12 @@
 # tfenvgo
 
-Terraform version manager [tfenv](https://github.com/tfutils/tfenv) written in Go.
+Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but written in Go.
 
-> WARNING: this is my first project written in Go to learn it. It is inpired by tfenv, but is written without inspecting source, only documentation is used.
+> WARNING: this is my first project written in Go to learn it. It is inspired by `tfenv`, but is written without inspecting source, only documentation is used.
 
 ## Support
 
-Currently tfenv supports the following OSes
+Currently `tfenvgo` supports the following OSes
 
 * Linux
   * AMD64
@@ -75,3 +75,21 @@ Specifies OS type. Default OS type is defined during compilation. Override to do
 `TFENVGO_TERRAFORM_VERSION`
 
 If not empty string, this variable overrides Terraform version provided by `.terraform-version` file and commands `tfenvgo install`, `tfenvgo use`.
+
+## .terraform-version file
+
+If you put a `.terraform-version` file in your project root, `tfenvgo` detects it and uses the version written in it. If the version is latest or latest:<regex> (TBD), the latest matching version currently installed will be selected.
+
+> NOTE: `TFENVGO_TERRAFORM_VERSION` environment variable can be used to override version, specified by `.terraform-version` file.
+
+For `tfenvgo` to be able to detect `.terraform-version` file, add provided shell hook to your shell config (`.zshrc` or `.bashrc`)
+
+```sh
+cd() {
+  builtin cd "$@" || return
+
+  if [ -f ".terraform-version" ]; then
+    tfenvgo use
+  fi
+}
+```
