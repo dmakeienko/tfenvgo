@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/dmakeienko/tfenvgo/compare/v1.4.0...v1.4.1) (2025-02-18)
+
+
+### Bug Fixes
+
+* fix `latest-allowed` and `min-required` commands using only remote versions ([2e74cb1](https://github.com/dmakeienko/tfenvgo/commit/2e74cb1d2cd46e891ce41aed787de20a79474644))
+
 # [1.4.0](https://github.com/dmakeienko/tfenvgo/compare/v1.3.0...v1.4.0) (2025-02-17)
 
 
