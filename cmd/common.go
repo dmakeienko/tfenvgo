@@ -72,19 +72,25 @@ func getTerraformVersionConstraint() (string, error) {
 	return requiredVersion, nil
 }
 
-func getMinRequired() (string, error) {
+func getMinRequired(target string) (string, error) {
 	terraformVersionContraint, _ := getTerraformVersionConstraint()
 	fmt.Println("Found version constraint: " + terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
+	if err != nil {
+		return "", fmt.Errorf("invalid constraint: %w", err)
+	}
 
-	terraformVersions, _ := getRemoteTerraformVersions()
+	var terraformVersions []string
+	switch target {
+	case "local":
+		terraformVersions, _ = getLocalTerraformVersions()
+
+	case "remote":
+		terraformVersions, _ = getRemoteTerraformVersions()
+	}
 
 	if len(terraformVersions) == 0 {
 		return "", fmt.Errorf("no terraform versions found")
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("invalid constraint: %w", err)
 	}
 
 	var validVersions []*semver.Version
@@ -107,19 +113,25 @@ func getMinRequired() (string, error) {
 	return validVersions[0].String(), nil // Return the smallest matching version
 }
 
-func getLatestAllowed() (string, error) {
+func getLatestAllowed(target string) (string, error) {
 	terraformVersionContraint, _ := getTerraformVersionConstraint()
 	fmt.Println("Found version constraint: " + terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
+	if err != nil {
+		return "", fmt.Errorf("invalid constraint: %w", err)
+	}
 
-	terraformVersions, _ := getRemoteTerraformVersions()
+	var terraformVersions []string
+	switch target {
+	case "local":
+		terraformVersions, _ = getLocalTerraformVersions()
+
+	case "remote":
+		terraformVersions, _ = getRemoteTerraformVersions()
+	}
 
 	if len(terraformVersions) == 0 {
 		return "", fmt.Errorf("no terraform versions found")
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("invalid constraint: %w", err)
 	}
 
 	var validVersions []*semver.Version
