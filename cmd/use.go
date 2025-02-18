@@ -72,7 +72,7 @@ var useCmd = &cobra.Command{
 		if len(args) == 0 {
 			version = getEnv(terraformVersionEnvKey, versionFromFile)
 			if version == "" {
-				version = "latest"
+				version = latestArg
 			}
 		} else if len(args) > 0 {
 			version = args[0]
@@ -90,7 +90,7 @@ var useCmd = &cobra.Command{
 
 		switch version {
 		case latestArg:
-			versions, err := getTerraformVersions()
+			versions, err := getRemoteTerraformVersions()
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}

@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func getTerraformVersions() ([]string, error) {
+func getRemoteTerraformVersions() ([]string, error) {
 	resp, err := http.Get(terraformReleasesURL)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ var listRemoteCmd = &cobra.Command{
 	Short: "List all available (stable) Terraform versions",
 	Long:  "List all available (stable) Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		versions, err := getTerraformVersions()
+		versions, err := getRemoteTerraformVersions()
 		if err != nil {
 			fmt.Println("Failed to get versions:", err)
 			return

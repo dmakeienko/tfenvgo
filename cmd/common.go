@@ -77,7 +77,7 @@ func getMinRequired() (string, error) {
 	fmt.Println("Found version constraint: " + terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
 
-	terraformVersions, _ := getTerraformVersions()
+	terraformVersions, _ := getRemoteTerraformVersions()
 
 	if len(terraformVersions) == 0 {
 		return "", fmt.Errorf("no terraform versions found")
@@ -112,7 +112,7 @@ func getLatestAllowed() (string, error) {
 	fmt.Println("Found version constraint: " + terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
 
-	terraformVersions, _ := getTerraformVersions()
+	terraformVersions, _ := getRemoteTerraformVersions()
 
 	if len(terraformVersions) == 0 {
 		return "", fmt.Errorf("no terraform versions found")
@@ -137,7 +137,7 @@ func getLatestAllowed() (string, error) {
 		return "", fmt.Errorf("no available versions satisfy the constraint")
 	}
 
-	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getTerraformVersions() returns versions in desc order, sort it to ensure it
+	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getRemoteTerraformVersions() returns versions in desc order, sort it to ensure it
 
 	return validVersions[0].String(), nil // Return the highest matching version
 }

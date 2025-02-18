@@ -50,7 +50,7 @@ var uninstallCmd = &cobra.Command{
 		}
 
 		if version == latestArg {
-			versions, err := listInstalledVersions()
+			versions, err := getLocalTerraformVersions()
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}

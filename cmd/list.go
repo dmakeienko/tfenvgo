@@ -31,7 +31,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func listInstalledVersions() ([]string, error) {
+func getLocalTerraformVersions() ([]string, error) {
 	files, err := os.ReadDir(terraformVersionPath)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		versions, err := listInstalledVersions()
+		versions, err := getLocalTerraformVersions()
 		if err != nil {
 			fmt.Println("failed to list installed versions: %w", err)
 			return
