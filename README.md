@@ -10,8 +10,10 @@ Currently `tfenvgo` supports the following OSes
 
 * Linux
   * AMD64
-  * ARM - *TBD*
-* macOS *TBD*
+  * ARM64
+* macOS
+  * AMD64
+  * ARM64
 * Windows - *Not supported and will not be*
 
 ## Installation
@@ -66,7 +68,7 @@ Uninstall a specific version of Terraform.
 
 Write current terraform version set by `tfenvgo` to the `.terraform-version` file.
 
-### tfenvgo version/version-name
+### tfenvgo version (version-name)
 
 Display current terraform version set by `tfenvgo`
 
