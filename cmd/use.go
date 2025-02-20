@@ -35,8 +35,8 @@ func useVersion(version string) {
 	if _, err := os.Stat(terraformSelectedPath); err != nil {
 		if os.IsNotExist(err) {
 			fmt.Println(Yellow + "Terraform v" + version + " is not installed" + Reset)
-			fmt.Println(Yellow + "Use " + "tfenvgo install " + version + " to install it" + Reset)
-			return
+			fmt.Println(Yellow + "Trying to install terraform v" + version + Reset)
+			installTerraform(version)
 		}
 	}
 	if _, err := os.Lstat(terraformPath); err == nil {
@@ -90,20 +90,21 @@ var useCmd = &cobra.Command{
 
 		switch version {
 		case latestArg:
-			versions, err := getLocalTerraformVersions()
+			versions, err := getRemoteTerraformVersions()
 			if err != nil {
-				fmt.Println("failed to use latest version: %w", err)
+				fmt.Println("failed to use check installed version: %w", err)
+				return
 			}
 			version = versions[0]
 		case minRequiredArg:
-			minRequiredVersion, err := getMinRequired("local")
+			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
 				fmt.Println(Red + "Failed to use minimum required version: " + err.Error() + Reset)
 				return
 			}
 			version = minRequiredVersion
 		case latestAllowedArg:
-			latestAllowedVersion, err := getLatestAllowed("local")
+			latestAllowedVersion, err := getLatestAllowed("remote")
 			if err != nil {
 				fmt.Println(Red + "Failed to use latest allowed version: " + err.Error() + Reset)
 				return

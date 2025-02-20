@@ -157,7 +157,6 @@ func installTerraform(version string) {
 	} else {
 		fmt.Println(Yellow + "Terraform v" + version + " is already installed." + Reset)
 	}
-	// useVersion(version)  // Do I need to change version after download or use expilicitly?
 }
 
 // installCmd represents the install command
