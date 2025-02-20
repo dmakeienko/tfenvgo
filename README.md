@@ -52,7 +52,7 @@ If no parameter is passed, the version to use is resolved automatically via **TF
 * `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 * `latest-allowed` is a syntax to scan your Terraform files to detect which version is latest allowed
 
-### tfenv uninstall [version]
+### tfenvgo uninstall [version]
 
 Uninstall a specific version of Terraform.
 
@@ -61,6 +61,14 @@ Uninstall a specific version of Terraform.
 * `x.y.z` Semver 2.0.0 string specifying the exact version to uninstall
 * `latest` is a syntax to uninstall latest present version
 * (**TBD**) `latest:<regex>` is a syntax to uninstall latest version matching regex
+
+### tfenvgo pin
+
+Write current terraform version set by `tfenvgo` to the `.terraform-version` file.
+
+### tfenvgo version/version-name
+
+Display current terraform version set by `tfenvgo`
 
 ## Environment variables
 
