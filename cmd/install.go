@@ -152,12 +152,12 @@ func installTerraform(version string) {
 		err := downloadTerraform(version)
 		if err != nil {
 			fmt.Println(Red+"failed to download binary: %w", err)
+			return
 		}
 		fmt.Println(Green + "Terraform v" + version + " has been installed" + Reset)
 	} else {
 		fmt.Println(Yellow + "Terraform v" + version + " is already installed." + Reset)
 	}
-	// useVersion(version)  // Do I need to change version after download or use expilicitly?
 }
 
 // installCmd represents the install command
@@ -189,7 +189,7 @@ var installCmd = &cobra.Command{
 
 		switch version {
 		case latestArg:
-			versions, err := getRemoteTerraformVersions()
+			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}
@@ -215,4 +215,6 @@ var installCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(installCmd)
+	installCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
+
 }

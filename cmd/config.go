@@ -38,3 +38,6 @@ const (
 )
 
 const terraformVersionFilename string = ".terraform-version"
+
+// flags
+var PreReleaseVersionsIncluded bool

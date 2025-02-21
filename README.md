@@ -10,8 +10,10 @@ Currently `tfenvgo` supports the following OSes
 
 * Linux
   * AMD64
-  * ARM - *TBD*
-* macOS *TBD*
+  * ARM64
+* macOS
+  * AMD64
+  * ARM64
 * Windows - *Not supported and will not be*
 
 ## Installation
@@ -33,6 +35,10 @@ If no parameter is passed, the version to install is resolved automatically via 
 * `latest-allowed` is a syntax to scan your Terraform files to detect which version is maximally allowed
 * `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 
+**Available flags:**
+
+* `--include-prerelease` - include prerelease versions into account when specifying `latest`, i.e. *1.12.0-alpha20250213*, *0.12.0-rc1* etc.
+
 **Environment variables:**
 
 `TFENVGO_ARCH` - specify to install binary for different architecture then your own.
@@ -52,7 +58,7 @@ If no parameter is passed, the version to use is resolved automatically via **TF
 * `min-required` is a syntax to scan your Terraform files to detect which version is minimally required
 * `latest-allowed` is a syntax to scan your Terraform files to detect which version is latest allowed
 
-### tfenv uninstall [version]
+### tfenvgo uninstall [version]
 
 Uninstall a specific version of Terraform.
 
@@ -61,6 +67,36 @@ Uninstall a specific version of Terraform.
 * `x.y.z` Semver 2.0.0 string specifying the exact version to uninstall
 * `latest` is a syntax to uninstall latest present version
 * (**TBD**) `latest:<regex>` is a syntax to uninstall latest version matching regex
+
+**Available flags:**
+
+* `--include-prerelease` - include prerelease versions into account when specifying `latest`, i.e. *1.12.0-alpha20250213*, *0.12.0-rc1* etc.
+
+### tfenvgo list
+
+List all available terraform versions installed locally.
+By default, it fetches *only stable* versions
+
+**Available flags:**
+
+* `--include-prerelease` - include prerelease versions i.e. *1.12.0-alpha20250213*, *0.12.0-rc1* etc.
+
+### tfenvgo list-remote
+
+Get all available versions of Terraform from the Hashicorp release page.
+By default, it fetches *only stable* versions
+
+**Available flags:**
+
+* `--include-prerelease` - include prerelease versions i.e. *1.12.0-alpha20250213*, *0.12.0-rc1* etc.
+
+### tfenvgo pin
+
+Write current terraform version set by `tfenvgo` to the `.terraform-version` file.
+
+### tfenvgo version (version-name)
+
+Display current terraform version set by `tfenvgo`
 
 ## Environment variables
 

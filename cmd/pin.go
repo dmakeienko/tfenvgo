@@ -28,39 +28,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func uninstallTerraform(version string) {
-	os.RemoveAll(terraformVersionPath + "/" + version)
-	fmt.Println(Yellow + "Uninstalled Terraform version v" + version + Reset)
+func writeCurrentVersionToFile() error {
+	currentVersion, err := getCurrentTerraformVersion()
+	if err != nil {
+		return fmt.Errorf("failed to get current terraform version: %w", err)
+	}
+
+	terraformVersionFile, err := os.Create(terraformVersionFilename)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer terraformVersionFile.Close()
+
+	_, err2 := terraformVersionFile.WriteString(currentVersion)
+	if err2 != nil {
+		return fmt.Errorf("failed to write  terraform version to file: %w", err2)
+	}
+	fmt.Println(Green + terraformVersionFilename + " file created with current terraform version: " + currentVersion + Reset)
+	return nil
 }
 
-// uninstallCmd represents the uninstall command
-var uninstallCmd = &cobra.Command{
-	Use:   "uninstall",
-	Short: "Uninstall a specific Terraform version",
-	Args:  cobra.ExactArgs(1),
+// pinCmd represents the pin command
+var pinCmd = &cobra.Command{
+	Use:   "pin",
+	Short: "Write the current active version to .terraform-version file",
 	Run: func(cmd *cobra.Command, args []string) {
-		version := args[0]
-
-		allowedVersions := map[string]bool{
-			latestArg: true,
-		}
-
-		if validateArg(version, allowedVersions) != nil {
+		err := writeCurrentVersionToFile()
+		if err != nil {
+			fmt.Println(Red + "Failed to write current terraform version to file: " + err.Error() + Reset)
 			return
 		}
-
-		if version == latestArg {
-			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
-			if err != nil {
-				fmt.Println("failed to get latest version: %w", err)
-			}
-			version = versions[0]
-		}
-		uninstallTerraform(version)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(uninstallCmd)
-	uninstallCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
+	rootCmd.AddCommand(pinCmd)
 }

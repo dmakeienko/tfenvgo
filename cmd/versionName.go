@@ -23,44 +23,24 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
 
-func uninstallTerraform(version string) {
-	os.RemoveAll(terraformVersionPath + "/" + version)
-	fmt.Println(Yellow + "Uninstalled Terraform version v" + version + Reset)
-}
-
-// uninstallCmd represents the uninstall command
-var uninstallCmd = &cobra.Command{
-	Use:   "uninstall",
-	Short: "Uninstall a specific Terraform version",
-	Args:  cobra.ExactArgs(1),
+var versionNameCmd = &cobra.Command{
+	Use:     "version-name",
+	Aliases: []string{"version"},
+	Short:   "Display the current Terraform version set by tfenvgo",
 	Run: func(cmd *cobra.Command, args []string) {
-		version := args[0]
-
-		allowedVersions := map[string]bool{
-			latestArg: true,
-		}
-
-		if validateArg(version, allowedVersions) != nil {
+		currentVersion, err := getCurrentTerraformVersion()
+		if err != nil {
+			fmt.Println(Red + "Failed to get current terraform version: " + err.Error() + Reset)
 			return
 		}
-
-		if version == latestArg {
-			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
-			if err != nil {
-				fmt.Println("failed to get latest version: %w", err)
-			}
-			version = versions[0]
-		}
-		uninstallTerraform(version)
+		fmt.Println(Green + "Current Terraform version: " + currentVersion + Reset)
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(uninstallCmd)
-	uninstallCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
+	rootCmd.AddCommand(versionNameCmd)
 }

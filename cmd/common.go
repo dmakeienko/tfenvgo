@@ -83,10 +83,10 @@ func getMinRequired(target string) (string, error) {
 	var terraformVersions []string
 	switch target {
 	case "local":
-		terraformVersions, _ = getLocalTerraformVersions()
+		terraformVersions, _ = getLocalTerraformVersions(false)
 
 	case "remote":
-		terraformVersions, _ = getRemoteTerraformVersions()
+		terraformVersions, _ = getRemoteTerraformVersions(false)
 	}
 
 	if len(terraformVersions) == 0 {
@@ -124,10 +124,10 @@ func getLatestAllowed(target string) (string, error) {
 	var terraformVersions []string
 	switch target {
 	case "local":
-		terraformVersions, _ = getLocalTerraformVersions()
+		terraformVersions, _ = getLocalTerraformVersions(false)
 
 	case "remote":
-		terraformVersions, _ = getRemoteTerraformVersions()
+		terraformVersions, _ = getRemoteTerraformVersions(false)
 	}
 
 	if len(terraformVersions) == 0 {

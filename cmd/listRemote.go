@@ -30,7 +30,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func getRemoteTerraformVersions() ([]string, error) {
+func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
 	resp, err := http.Get(terraformReleasesURL)
 	if err != nil {
 		return nil, err
@@ -42,9 +42,18 @@ func getRemoteTerraformVersions() ([]string, error) {
 	}
 
 	var versions []string
-	z := html.NewTokenizer(resp.Body)
-	versionRegex := regexp.MustCompile(`^/terraform/([0-9]+\.[0-9]+\.[0-9]+)/$`)
+	var versionRegex *regexp.Regexp
 
+	stableVersionRegex := regexp.MustCompile(`^/terraform/([0-9]+\.[0-9]+\.[0-9]+)/$`)
+	preReleaseVersionRegex := regexp.MustCompile(`^/terraform/(\d+\.\d+\.\d+(-[a-z]+\d+)?)\/$`)
+
+	if preReleaseVersionsIncluded {
+		versionRegex = preReleaseVersionRegex
+	} else {
+		versionRegex = stableVersionRegex
+	}
+
+	z := html.NewTokenizer(resp.Body)
 	for {
 		tt := z.Next()
 		if tt == html.ErrorToken {
@@ -57,7 +66,7 @@ func getRemoteTerraformVersions() ([]string, error) {
 					attrName, attrValue, moreAttr := z.TagAttr()
 					if string(attrName) == "href" {
 						matches := versionRegex.FindStringSubmatch(string(attrValue))
-						if len(matches) == 2 {
+						if len(matches) >= 2 {
 							versions = append(versions, matches[1])
 						}
 					}
@@ -75,15 +84,15 @@ func getRemoteTerraformVersions() ([]string, error) {
 // listRemoteCmd represents the listRemote command
 var listRemoteCmd = &cobra.Command{
 	Use:   "list-remote",
-	Short: "List all available (stable) Terraform versions",
-	Long:  "List all available (stable) Terraform versions",
+	Short: "List all available Terraform versions",
+	Long:  "List all available Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		versions, err := getRemoteTerraformVersions()
+		versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 		if err != nil {
 			fmt.Println("Failed to get versions:", err)
 			return
 		}
-		fmt.Println(Green + "Available stable versions:" + Reset)
+		fmt.Println(Green + "Available versions:" + Reset)
 		for _, v := range versions {
 			fmt.Println(Gray + v + Reset)
 		}
@@ -92,4 +101,5 @@ var listRemoteCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listRemoteCmd)
+	listRemoteCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
 }
