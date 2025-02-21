@@ -1,3 +1,16 @@
+# [1.5.0](https://github.com/dmakeienko/tfenvgo/compare/v1.4.1...v1.5.0) (2025-02-21)
+
+
+### Bug Fixes
+
+* fix behaviour of the `use` command: now checks if the required version is installed and installs it if it is not present ([4b0d90d](https://github.com/dmakeienko/tfenvgo/commit/4b0d90d6e8f5b2c2361c59912766bd2a8f816bfe))
+
+
+### Features
+
+* `list`, `list-remote` can now fetch prerelease versions with `--include-prerelease` flag; commands `install`, `uninstall`, `use` can use flag `--include-prerelease` while using `latest` as an argument ([50209cb](https://github.com/dmakeienko/tfenvgo/commit/50209cbdbb9e5ddf35f4b53c58bbcdee041bef64))
+* add `pin` and  `version-name` command ([c6940a1](https://github.com/dmakeienko/tfenvgo/commit/c6940a13908b4be266c77b7d4708b0507463bb7f))
+
 ## [1.4.1](https://github.com/dmakeienko/tfenvgo/compare/v1.4.0...v1.4.1) (2025-02-18)
 
 
