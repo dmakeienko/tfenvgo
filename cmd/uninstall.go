@@ -50,7 +50,7 @@ var uninstallCmd = &cobra.Command{
 		}
 
 		if version == latestArg {
-			versions, err := getLocalTerraformVersions()
+			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}
@@ -62,4 +62,5 @@ var uninstallCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(uninstallCmd)
+	uninstallCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
 }

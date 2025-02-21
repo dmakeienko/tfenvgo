@@ -31,18 +31,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getLocalTerraformVersions() ([]string, error) {
+func getLocalTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
 	files, err := os.ReadDir(terraformVersionPath)
 	if err != nil {
 		return nil, err
 	}
 
 	var versions []*semver.Version
-	rgx := regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+	var versionRegex *regexp.Regexp
+	stableVersionRegex := regexp.MustCompile(`^v?\d+\.\d+\.\d+$`)
+	preReleaseVersionRegex := regexp.MustCompile(`^v?\d+\.\d+\.\d+(-[a-z]+\d+)?$`)
+
+	if preReleaseVersionsIncluded {
+		versionRegex = preReleaseVersionRegex
+	} else {
+		versionRegex = stableVersionRegex
+	}
 
 	for _, f := range files {
 		name := f.Name()
-		if rgx.MatchString(name) {
+		if versionRegex.MatchString(name) {
 			v, err := semver.NewVersion(name)
 			if err == nil {
 				versions = append(versions, v)
@@ -64,7 +72,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		versions, err := getLocalTerraformVersions()
+		versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 		if err != nil {
 			fmt.Println("failed to list installed versions: %w", err)
 			return
@@ -87,4 +95,5 @@ var listCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(listCmd)
+	listCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
 }

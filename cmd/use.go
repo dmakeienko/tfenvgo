@@ -90,7 +90,7 @@ var useCmd = &cobra.Command{
 
 		switch version {
 		case latestArg:
-			versions, err := getRemoteTerraformVersions()
+			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to use check installed version: %w", err)
 				return
@@ -117,4 +117,5 @@ var useCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(useCmd)
+	useCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
 }
