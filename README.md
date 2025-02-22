@@ -4,6 +4,15 @@ Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but wri
 
 > WARNING: this is my first project written in Go to learn it. It is inspired by `tfenv`, but is written without inspecting source, only documentation is used.
 
+Why use `tfenvgo` instead of `tfenv`?
+
+Here are reasons:
+
+1. Distributed as a single binary, easy to install
+2. `min-required` and `latest-allowed` doesn't have limitation as `tfenv`:  `tfenvgo` use real Go regex
+3. Ability to work with *pre-release* terraform versions (see `--include-prerelease` flag)
+4. `tfenvgo` is faster by around 50%
+
 ## Support
 
 Currently `tfenvgo` supports the following OSes
