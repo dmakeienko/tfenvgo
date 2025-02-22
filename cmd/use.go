@@ -29,7 +29,11 @@ import (
 )
 
 func useVersion(version string) {
-	// check if .tfenvgo/bin/terraform exists
+	err := initConfig()
+	if err != nil {
+		fmt.Println("failed to create config: %w", err)
+	}
+
 	terraformPath := terraformBinPath + "/terraform"
 	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
 	if _, err := os.Stat(terraformSelectedPath); err != nil {

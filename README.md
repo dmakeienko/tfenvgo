@@ -18,7 +18,49 @@ Currently `tfenvgo` supports the following OSes
 
 ## Installation
 
-TBD
+### Manual
+
+1. Get latest release:
+
+```sh
+VERSION=$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' |head -1)
+```
+
+2. Download archive
+
+> NOTE: don't forget to change `arch` and `os` if yours are different
+
+```sh
+curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-linux-amd64.tar.gz
+```
+
+3. Unarchive it
+
+```sh
+tar -xvzf tfenvgo-$VERSION-linux-amd64.tar.gz
+```
+
+4. Install `tfenvgo` into any location that located in your `PATH`:
+
+```sh
+sudo mv tfenvgo /usr/local/bin
+```
+
+5. Update your shell profile
+
+add following line to your shell config file:
+
+```sh
+`export PATH=$PATH:$HOME/.tfenvgo/bin`
+```
+
+and (optionally) run
+
+```sh
+tfenvgo init
+```
+
+This command will precreate `$HOME/.tfenvgo/bin` folder structure.
 
 ## Usage
 

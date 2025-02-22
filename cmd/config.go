@@ -11,6 +11,7 @@ var rootURL = os.Getenv("HOME") + "/.tfenvgo"
 var terraformBinPath = rootURL + "/bin"
 var terraformVersionPath = rootURL + "/versions"
 
+// System
 var defaultArch = runtime.GOARCH
 var defaultOSType = runtime.GOOS
 
