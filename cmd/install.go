@@ -117,6 +117,9 @@ func downloadTerraform(version string) error {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to download file: %s", resp.Status)
+	}
 	// Create the file
 	filepath := filepath.Join("/tmp", path.Base(resp.Request.URL.String()))
 
@@ -150,7 +153,7 @@ func installTerraform(version string) {
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
 		if err != nil {
-			fmt.Println(Red+"failed to download binary: %w", err)
+			fmt.Println(Red+"error downloading:", err)
 			return
 		}
 		fmt.Println(Green + "Terraform v" + version + " has been installed" + Reset)
