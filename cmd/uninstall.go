@@ -24,12 +24,13 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
 
 func uninstallTerraform(version string) {
-	os.RemoveAll(terraformVersionPath + "/" + version)
+	os.RemoveAll(filepath.Join(terraformVersionPath, version))
 	fmt.Println(Yellow + "Uninstalled Terraform version v" + version + Reset)
 }
 

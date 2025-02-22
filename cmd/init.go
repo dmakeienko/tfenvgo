@@ -29,14 +29,12 @@ import (
 )
 
 func initConfig() error {
-	binPath := os.Getenv("HOME") + "/.tfenvgo/bin"
-
-	if _, err := os.Stat(binPath); os.IsNotExist(err) {
-		err := os.MkdirAll(binPath, os.ModePerm)
+	if _, err := os.Stat(terraformBinPath); os.IsNotExist(err) {
+		err := os.MkdirAll(terraformBinPath, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("failed to create  config")
 		}
-		fmt.Println(binPath + " has been created successfully.")
+		fmt.Println(terraformBinPath + " has been created successfully.")
 	}
 	return nil
 }

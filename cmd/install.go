@@ -25,7 +25,6 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"path"
@@ -119,7 +118,7 @@ func downloadTerraform(version string) error {
 	defer resp.Body.Close()
 
 	// Create the file
-	filepath := "/tmp/" + path.Base(resp.Request.URL.String())
+	filepath := filepath.Join("/tmp", path.Base(resp.Request.URL.String()))
 
 	out, err := os.Create(filepath)
 	if err != nil {
@@ -138,7 +137,7 @@ func downloadTerraform(version string) error {
 	err = unarchiveZip(filepath, version)
 
 	if err != nil {
-		log.Printf(Red+"Failed to unarchive: %v", err)
+		return fmt.Errorf("failed to unarchive: %v", err)
 	}
 	fmt.Println(Yellow + "Removing " + filepath + Reset)
 	os.Remove(filepath)
@@ -147,7 +146,7 @@ func downloadTerraform(version string) error {
 }
 
 func installTerraform(version string) {
-	_, err := os.Stat(terraformVersionPath + "/" + version)
+	_, err := os.Stat(filepath.Join(terraformVersionPath, version))
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
 		if err != nil {

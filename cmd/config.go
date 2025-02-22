@@ -2,14 +2,16 @@ package cmd
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
 const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 
-var rootURL = os.Getenv("HOME") + "/.tfenvgo"
-var terraformBinPath = rootURL + "/bin"
-var terraformVersionPath = rootURL + "/versions"
+var rootURL = filepath.Join(os.Getenv("HOME"), ".tfenvgo")
+var terraformBinPath = filepath.Join(rootURL, "bin")
+var terraformVersionPath = filepath.Join(rootURL, "versions")
+var currentTerraformVersionPath = filepath.Join(terraformBinPath, "terraform")
 
 // System
 var defaultArch = runtime.GOARCH

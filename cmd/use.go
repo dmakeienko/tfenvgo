@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -34,8 +35,7 @@ func useVersion(version string) {
 		fmt.Println("failed to create config: %w", err)
 	}
 
-	terraformPath := terraformBinPath + "/terraform"
-	terraformSelectedPath := terraformVersionPath + "/" + version + "/terraform"
+	terraformSelectedPath := filepath.Join(terraformVersionPath, version, "terraform")
 	if _, err := os.Stat(terraformSelectedPath); err != nil {
 		if os.IsNotExist(err) {
 			fmt.Println(Yellow + "Terraform v" + version + " is not installed" + Reset)
@@ -43,22 +43,22 @@ func useVersion(version string) {
 			installTerraform(version)
 		}
 	}
-	if _, err := os.Lstat(terraformPath); err == nil {
-		os.Remove(terraformPath)
-		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
+	if _, err := os.Lstat(currentTerraformVersionPath); err == nil {
+		os.Remove(currentTerraformVersionPath)
+		if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
 			return
 		}
-		if err := os.Chmod(terraformPath, 0775); err != nil {
+		if err := os.Chmod(currentTerraformVersionPath, 0775); err != nil {
 			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
 			return
 		}
 	} else {
-		if err := os.Symlink(terraformSelectedPath, terraformPath); err != nil {
+		if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
 			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
 			return
 		}
-		if err := os.Chmod(terraformPath, 0775); err != nil {
+		if err := os.Chmod(currentTerraformVersionPath, 0775); err != nil {
 			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
 			return
 		}
