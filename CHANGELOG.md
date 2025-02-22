@@ -1,3 +1,11 @@
+## [1.5.1](https://github.com/dmakeienko/tfenvgo/compare/v1.5.0...v1.5.1) (2025-02-22)
+
+
+### Bug Fixes
+
+* fix `install` command allowing to download nonexistent files ([e71e010](https://github.com/dmakeienko/tfenvgo/commit/e71e0106d4d4acc2388134de82af4e3950b393b8))
+* remove shell update func to prevent conflicts; update docs; `tfenvgo init` is now optional step, folder structure will be created automatically when executing `tfenvgo use` ([c3c7699](https://github.com/dmakeienko/tfenvgo/commit/c3c7699817b2caeebd3508ccfcf60dbb7238e60a))
+
 # [1.5.0](https://github.com/dmakeienko/tfenvgo/compare/v1.4.1...v1.5.0) (2025-02-21)
 
 
