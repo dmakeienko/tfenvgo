@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/dmakeienko/tfenvgo/compare/v1.5.1...v1.6.0) (2025-02-23)
+
+
+### Features
+
+* implement `install/use/uninstall` with regex ([f2483c8](https://github.com/dmakeienko/tfenvgo/commit/f2483c89ace8a9a8fbbd9ad14d4d3b5f032bde5b))
+
 ## [1.5.1](https://github.com/dmakeienko/tfenvgo/compare/v1.5.0...v1.5.1) (2025-02-22)
 
 
