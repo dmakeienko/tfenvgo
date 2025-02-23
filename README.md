@@ -81,9 +81,13 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 
 * `x.y.z` - Semver 2.0.0 string specifying the exact version to install.
 * `latest` - Syntax to install the latest available *stable* version.
-* (**TBD**) `latest:<regex>` - Syntax to install the latest version matching the regex.
 * `latest-allowed` - Syntax to scan your Terraform files to detect which version is maximally allowed.
 * `min-required` - Syntax to scan your Terraform files to detect which version is minimally required.
+* `latest "regex"` - Syntax to install the latest version matching the regex.
+
+> NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
+
+> NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**
 
@@ -102,9 +106,13 @@ Switch to a specific version to use. If no parameter is passed, the version to u
 
 * `x.y.z` - Semver 2.0.0 string specifying the exact version to use.
 * `latest` - Syntax to use the latest installed *stable* version.
-* (**TBD**) `latest:<regex>` - Syntax to use the latest version matching the regex.
 * `min-required` - Syntax to scan your Terraform files to detect which version is minimally required.
 * `latest-allowed` - Syntax to scan your Terraform files to detect which version is the latest allowed.
+* `latest "regex"` - Syntax to install the latest version matching the regex.
+
+> NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
+
+> NOTE: `latest "regex"` does not work with prerelease versions
 
 ### tfenvgo uninstall [version]
 
@@ -114,7 +122,11 @@ Uninstall a specific version of Terraform.
 
 * `x.y.z` - Semver 2.0.0 string specifying the exact version to uninstall.
 * `latest` - Syntax to uninstall the latest present version.
-* (**TBD**) `latest:<regex>` - Syntax to uninstall the latest version matching the regex.
+* `latest "regex"` - Syntax to install the latest version matching the regex.
+
+> NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
+
+> NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**
 
@@ -152,7 +164,7 @@ Display the current Terraform version set by `tfenvgo`.
 
 ## .terraform-version file
 
-If you put a `.terraform-version` file in your project root, `tfenvgo` detects it and uses the version written in it. If the version is `latest` or `latest:<regex>` (TBD), the latest matching version currently installed will be selected.
+If you put a `.terraform-version` file in your project root, `tfenvgo` detects it and uses the version written in it. If the version is `latest` or `latest: "regex"`, the latest matching version will be selected.
 
 > **NOTE:** The `TFENVGO_TERRAFORM_VERSION` environment variable can be used to override the version specified by the `.terraform-version` file.
 
@@ -166,4 +178,58 @@ cd() {
     tfenvgo use
   fi
 }
+```
+
+## SemVer evaluation
+
+`tfenvgo` uses [SemVer package](https://github.com/Masterminds/semver) to parse, sort and evaluate constraints.
+
+### Hyphen Range Comparisons
+
+There are multiple methods to handle ranges and the first is hyphens ranges. These look like:
+
+```sh
+1.2 - 1.4.5 which is equivalent to >= 1.2 <= 1.4.5
+2.3.4 - 4.5 which is equivalent to >= 2.3.4 <= 4.5
+```
+
+>NOTE: 1.2-1.4.5 without whitespace is parsed completely differently; it's parsed as a single constraint 1.2.0 with prerelease 1.4.5.
+
+### Wildcards In Comparisons
+
+The x, X, and * characters can be used as a wildcard character. This works for all comparison operators. When used on the = operator it falls back to the patch level comparison (see tilde below). For example,
+
+```sh
+1.2.x is equivalent to >= 1.2.0, < 1.3.0
+>= 1.2.x is equivalent to >= 1.2.0
+<= 2.x is equivalent to < 3
+* is equivalent to >= 0.0.0
+```
+
+### Tilde Range Comparisons (Patch)
+
+The tilde (~) comparison operator is for patch level ranges when a minor version is specified and major level changes when the minor number is missing. For example,
+
+```sh
+~1.2.3 is equivalent to >= 1.2.3, < 1.3.0
+~1 is equivalent to >= 1, < 2
+~2.3 is equivalent to >= 2.3, < 2.4
+~1.2.x is equivalent to >= 1.2.0, < 1.3.0
+~1.x is equivalent to >= 1, < 2
+```
+
+### Caret Range Comparisons (Major)
+
+The caret (^) comparison operator is for major level changes once a stable (1.0.0) release has occurred. Prior to a 1.0.0 release the minor versions acts as the API stability level. This is useful when comparisons of API versions as a major change is API breaking. For example,
+
+```sh
+^1.2.3 is equivalent to >= 1.2.3, < 2.0.0
+^1.2.x is equivalent to >= 1.2.0, < 2.0.0
+^2.3 is equivalent to >= 2.3, < 3
+^2.x is equivalent to >= 2.0.0, < 3
+^0.2.3 is equivalent to >=0.2.3 <0.3.0
+^0.2 is equivalent to >=0.2.0 <0.3.0
+^0.0.3 is equivalent to >=0.0.3 <0.0.4
+^0.0 is equivalent to >=0.0.0 <0.1.0
+^0 is equivalent to >=0.0.0 <1.0.0
 ```

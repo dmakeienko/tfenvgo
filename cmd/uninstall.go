@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/spf13/cobra"
 )
@@ -38,9 +39,21 @@ func uninstallTerraform(version string) {
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
 	Short: "Uninstall a specific Terraform version",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		version := args[0]
+		var version string
+		var versionRegex *regexp.Regexp
+		if len(args) == 0 {
+			version = getEnv(terraformVersionEnvKey, latestArg)
+			if version == "" {
+				version = latestArg
+			}
+		} else if len(args) == 1 {
+			version = args[0]
+		} else if len(args) == 2 && args[0] == latestArg {
+			version = args[0]
+			versionRegex = regexp.MustCompile(args[1])
+		}
 
 		allowedVersions := map[string]bool{
 			latestArg: true,
@@ -50,12 +63,19 @@ var uninstallCmd = &cobra.Command{
 			return
 		}
 
-		if version == latestArg {
+		if version == latestArg && versionRegex == nil {
 			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}
 			version = versions[0]
+		} else if version == latestArg && versionRegex != nil {
+			latestRegexVersion, err := getLatestAllowed("local", versionRegex.String())
+			if err != nil {
+				fmt.Println(Red + "Failed to get latest regex version: " + err.Error() + Reset)
+				return
+			}
+			version = latestRegexVersion
 		}
 		uninstallTerraform(version)
 	},

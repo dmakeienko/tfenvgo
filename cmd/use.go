@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 
 	"github.com/spf13/cobra"
 )
@@ -69,17 +70,21 @@ func useVersion(version string) {
 var useCmd = &cobra.Command{
 	Use:   "use",
 	Short: "Change the current Terraform version",
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		var version string
+		var versionRegex *regexp.Regexp
 		versionFromFile, _ := readVersionFromFile()
 		if len(args) == 0 {
 			version = getEnv(terraformVersionEnvKey, versionFromFile)
 			if version == "" {
 				version = latestArg
 			}
-		} else if len(args) > 0 {
+		} else if len(args) == 1 {
 			version = args[0]
+		} else if len(args) == 2 && args[0] == latestArg {
+			version = args[0]
+			versionRegex = regexp.MustCompile(args[1])
 		}
 
 		allowedVersions := map[string]bool{
@@ -92,28 +97,35 @@ var useCmd = &cobra.Command{
 			return
 		}
 
-		switch version {
-		case latestArg:
+		switch {
+		case (version == latestArg && versionRegex == nil):
 			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to use check installed version: %w", err)
 				return
 			}
 			version = versions[0]
-		case minRequiredArg:
+		case (version == minRequiredArg):
 			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
 				fmt.Println(Red + "Failed to use minimum required version: " + err.Error() + Reset)
 				return
 			}
 			version = minRequiredVersion
-		case latestAllowedArg:
-			latestAllowedVersion, err := getLatestAllowed("remote")
+		case (version == latestAllowedArg):
+			latestAllowedVersion, err := getLatestAllowed("remote", "")
 			if err != nil {
 				fmt.Println(Red + "Failed to use latest allowed version: " + err.Error() + Reset)
 				return
 			}
 			version = latestAllowedVersion
+		case (version == latestArg && versionRegex != nil):
+			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
+			if err != nil {
+				fmt.Println(Red + "Failed to get latest regex version: " + err.Error() + Reset)
+				return
+			}
+			version = latestRegexVersion
 		}
 		useVersion(version)
 	},

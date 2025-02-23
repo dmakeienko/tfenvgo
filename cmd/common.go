@@ -113,8 +113,13 @@ func getMinRequired(target string) (string, error) {
 	return validVersions[0].String(), nil // Return the smallest matching version
 }
 
-func getLatestAllowed(target string) (string, error) {
-	terraformVersionContraint, _ := getTerraformVersionConstraint()
+func getLatestAllowed(target, constraint string) (string, error) {
+	var terraformVersionContraint string
+	if constraint == "" {
+		terraformVersionContraint, _ = getTerraformVersionConstraint()
+	} else {
+		terraformVersionContraint = constraint
+	}
 	fmt.Println("Found version constraint: " + terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
 	if err != nil {

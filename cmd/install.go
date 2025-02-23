@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -166,17 +167,21 @@ func installTerraform(version string) {
 var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install a specific Terraform version",
-	Args:  cobra.MaximumNArgs(1),
+	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		var version string
+		var versionRegex *regexp.Regexp
 		versionFromFile, _ := readVersionFromFile()
 		if len(args) == 0 {
 			version = getEnv(terraformVersionEnvKey, versionFromFile)
 			if version == "" {
 				version = latestArg
 			}
-		} else if len(args) > 0 {
+		} else if len(args) == 1 {
 			version = args[0]
+		} else if len(args) == 2 && args[0] == latestArg {
+			version = args[0]
+			versionRegex = regexp.MustCompile(args[1])
 		}
 
 		allowedVersions := map[string]bool{
@@ -189,27 +194,34 @@ var installCmd = &cobra.Command{
 			return
 		}
 
-		switch version {
-		case latestArg:
+		switch {
+		case (version == latestArg && versionRegex == nil):
 			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				fmt.Println("failed to get latest version: %w", err)
 			}
 			version = versions[0]
-		case minRequiredArg:
+		case (version == minRequiredArg):
 			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
 				fmt.Println(Red + "Failed to get minimum required version: " + err.Error() + Reset)
 				return
 			}
 			version = minRequiredVersion
-		case latestAllowedArg:
-			latestAllowedVersion, err := getLatestAllowed("remote")
+		case (version == latestAllowedArg):
+			latestAllowedVersion, err := getLatestAllowed("remote", "")
 			if err != nil {
 				fmt.Println(Red + "Failed to get latest allowed version: " + err.Error() + Reset)
 				return
 			}
 			version = latestAllowedVersion
+		case (version == latestArg && versionRegex != nil):
+			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
+			if err != nil {
+				fmt.Println(Red + "Failed to get latest allowed version: " + err.Error() + Reset)
+				return
+			}
+			version = latestRegexVersion
 		}
 		installTerraform(version)
 	},
