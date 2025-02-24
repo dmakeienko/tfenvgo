@@ -29,20 +29,26 @@ func getTerraformVersionConstraint() (string, error) {
 		return "", fmt.Errorf("error getting current directory: %w", err)
 	}
 
-	// Walk through all files in the current directory
+	// Read all files in the current directory
+	entries, err := os.ReadDir(cwd)
+	if err != nil {
+		return "", fmt.Errorf("error reading current directory: %w", err)
+	}
+
 	var requiredVersion string
-	err = filepath.Walk(cwd, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	for _, entry := range entries {
 		// Skip directories
-		if info.IsDir() {
-			return nil
+		if entry.IsDir() {
+			continue
+		}
+		// Only process .tf files
+		if filepath.Ext(entry.Name()) != ".tf" {
+			continue
 		}
 		// Open file for reading
-		file, err := os.Open(path)
+		file, err := os.Open(filepath.Join(cwd, entry.Name()))
 		if err != nil {
-			return err
+			return "", err
 		}
 		defer file.Close()
 
@@ -52,17 +58,12 @@ func getTerraformVersionConstraint() (string, error) {
 			line := scanner.Text()
 			if matches := requiredVersionPattern.FindStringSubmatch(line); matches != nil {
 				requiredVersion = matches[1]
-				return nil // Stop walking once we find the required version
+				return requiredVersion, nil // Stop once we find the required version
 			}
 		}
 		if err := scanner.Err(); err != nil {
-			return err
+			return "", err
 		}
-		return nil
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("error walking through files: %w", err)
 	}
 
 	if requiredVersion == "" {
