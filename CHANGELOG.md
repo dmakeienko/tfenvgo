@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/dmakeienko/tfenvgo/compare/v1.6.0...v1.6.1) (2025-02-24)
+
+
+### Bug Fixes
+
+* fix getTerraformVersionConstraint() looking all directories recursively and encointering error that prevented proper constraint find ([1591e51](https://github.com/dmakeienko/tfenvgo/commit/1591e512cba3f050fc71c79613bc96882c6d42b9))
+
 # [1.6.0](https://github.com/dmakeienko/tfenvgo/compare/v1.5.1...v1.6.0) (2025-02-23)
 
 
