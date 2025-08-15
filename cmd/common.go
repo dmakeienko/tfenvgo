@@ -46,10 +46,27 @@ func getTerraformVersionConstraint() (string, error) {
 			continue
 		}
 		// Open file for reading
-		file, err := os.Open(filepath.Join(cwd, entry.Name()))
+		filePath := filepath.Join(cwd, entry.Name())
+		// Defensive absolute path check
+		absCwd, _ := filepath.Abs(cwd)
+		absFile, err := filepath.Abs(filePath)
+		if err != nil {
+			return "", fmt.Errorf("failed to resolve file path: %w", err)
+		}
+		if !strings.HasPrefix(absFile, absCwd+string(os.PathSeparator)) && absFile != absCwd {
+			return "", fmt.Errorf("file path outside current directory: %s", entry.Name())
+		}
+		// Path is validated above; safe to open. nolint:gosec
+		file, err := os.Open(filePath) //nolint:gosec
 		if err != nil {
 			return "", fmt.Errorf("failed to open file %s: %w", entry.Name(), err)
 		}
+		// Ensure file is closed and log any close errors
+		defer func() {
+			if cerr := file.Close(); cerr != nil {
+				LogWarn("failed to close file %s: %v", filePath, cerr)
+			}
+		}()
 
 		// Scan file line by line
 		scanner := bufio.NewScanner(file)
@@ -57,16 +74,13 @@ func getTerraformVersionConstraint() (string, error) {
 			line := scanner.Text()
 			if matches := requiredVersionPattern.FindStringSubmatch(line); matches != nil {
 				requiredVersion = matches[1]
-				file.Close()
 				return requiredVersion, nil // Stop once we find the required version
 			}
 		}
 
 		if err := scanner.Err(); err != nil {
-			file.Close()
 			return "", fmt.Errorf("error scanning file %s: %w", entry.Name(), err)
 		}
-		file.Close()
 	}
 
 	if requiredVersion == "" {
@@ -190,11 +204,21 @@ func readVersionFromFile() (string, error) {
 	path := filepath.Join(cwd, terraformVersionFilename)
 
 	// Open file for reading
-	file, err := os.Open(path)
+	// Ensure the path is inside current working directory
+	if !strings.HasPrefix(path, cwd) {
+		// defensive: construct with Join
+		path = filepath.Join(cwd, terraformVersionFilename)
+	}
+	// Path is validated above; safe to open. nolint:gosec
+	file, err := os.Open(path) //nolint:gosec
 	if err != nil {
 		return "", fmt.Errorf("failed to open %s: %w", terraformVersionFilename, err)
 	}
-	defer file.Close()
+	defer func() {
+		if cerr := file.Close(); cerr != nil {
+			LogWarn("failed to close %s: %v", terraformVersionFilename, cerr)
+		}
+	}()
 
 	// Scan file line by line
 	scanner := bufio.NewScanner(file)

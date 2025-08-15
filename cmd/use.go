@@ -63,7 +63,8 @@ func useVersion(version string) {
 	}
 
 	// Set executable permissions on the symlink target (not the symlink itself)
-	if err := os.Chmod(terraformSelectedPath, 0755); err != nil {
+	// Intentionally allow executable bit for the terraform binary. Permissions are set to 0755.
+	if err := os.Chmod(terraformSelectedPath, 0o755); err != nil { // nolint:gosec
 		LogError("Failed to update permissions: %v", err)
 		return
 	}
@@ -105,28 +106,32 @@ var useCmd = &cobra.Command{
 		case (version == latestArg && versionRegex == nil):
 			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
-				LogError("failed to use check installed version: %w", err)
+				LogError("failed to use check installed version: %v", err)
+				return
+			}
+			if len(versions) == 0 {
+				LogError("no remote versions available")
 				return
 			}
 			version = versions[0]
 		case (version == minRequiredArg):
 			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
-				LogError("Failed to use minimum required version: " + err.Error())
+				LogError("Failed to use minimum required version: %v", err)
 				return
 			}
 			version = minRequiredVersion
 		case (version == latestAllowedArg):
 			latestAllowedVersion, err := getLatestAllowed("remote", "")
 			if err != nil {
-				LogError("Failed to use latest allowed version: " + err.Error())
+				LogError("Failed to use latest allowed version: %v", err)
 				return
 			}
 			version = latestAllowedVersion
 		case (version == latestArg && versionRegex != nil):
 			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
 			if err != nil {
-				LogError("Failed to get latest regex version: " + err.Error())
+				LogError("Failed to get latest regex version: %v", err)
 				return
 			}
 			version = latestRegexVersion

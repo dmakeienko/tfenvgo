@@ -30,11 +30,11 @@ import (
 
 func initConfig() error {
 	if _, err := os.Stat(terraformBinPath); os.IsNotExist(err) {
-		err := os.MkdirAll(terraformBinPath, os.ModePerm)
+		err := os.MkdirAll(terraformBinPath, 0o750)
 		if err != nil {
-			return fmt.Errorf("failed to create  config")
+			return fmt.Errorf("failed to create config: %w", err)
 		}
-		fmt.Println(terraformBinPath + " has been created successfully.")
+		LogInfo("%s has been created successfully.", terraformBinPath)
 	}
 	return nil
 }
@@ -47,7 +47,7 @@ var initCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		err := initConfig()
 		if err != nil {
-			fmt.Println("failed to create config: %w", err)
+			LogError("failed to create config: %v", err)
 		}
 	},
 }
