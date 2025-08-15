@@ -23,6 +23,8 @@ package cmd
 
 import (
 	"archive/zip"
+	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,6 +33,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -49,17 +52,54 @@ func unarchiveZip(archivePath, version string) error {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
+	// Safety limits to prevent zip bombs
+	const (
+		maxFiles     = 100
+		maxFileSize  = 100 * 1024 * 1024 // 100MB per file
+		maxTotalSize = 500 * 1024 * 1024 // 500MB total
+		maxDepth     = 2
+	)
+
+	var (
+		fileCount int
+		totalSize int64
+	)
+
 	for _, f := range archive.File {
+		fileCount++
+		if fileCount > maxFiles {
+			return fmt.Errorf("too many files in archive (limit: %d)", maxFiles)
+		}
+
 		// Clean the file path and ensure it's within the destination directory
-		filePath := filepath.Clean(filepath.Join(dst, f.Name)) //nolint
+		filePath := filepath.Clean(filepath.Join(dst, f.Name))
 
 		// Prevent path traversal by checking if the file path is within the destination
-		if !strings.HasPrefix(filePath, dst) {
+		if !strings.HasPrefix(filePath, dst+string(os.PathSeparator)) && filePath != dst {
 			return fmt.Errorf("invalid file path (potential path traversal): %s", f.Name)
 		}
 
+		// Check directory depth
+		relPath, err := filepath.Rel(dst, filePath)
+		if err != nil {
+			return fmt.Errorf("failed to get relative path: %w", err)
+		}
+		if strings.Count(relPath, string(os.PathSeparator)) > maxDepth {
+			return fmt.Errorf("file path too deep: %s", f.Name)
+		}
+
+		// Check file size
+		if f.UncompressedSize64 > maxFileSize {
+			return fmt.Errorf("file too large: %s (%d bytes)", f.Name, f.UncompressedSize64)
+		}
+
+		totalSize += int64(f.UncompressedSize64)
+		if totalSize > maxTotalSize {
+			return fmt.Errorf("total uncompressed size exceeds limit (%d bytes)", maxTotalSize)
+		}
+
 		if f.FileInfo().IsDir() {
-			fmt.Printf("Creating directory: %s\n", filePath)
+			LogInfo("Creating directory: %s", filePath)
 			if err := os.MkdirAll(filePath, 0755); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", filePath, err)
 			}
@@ -83,22 +123,18 @@ func unarchiveZip(archivePath, version string) error {
 			return fmt.Errorf("failed to open file in archive %s: %w", f.Name, err)
 		}
 
-		// Check for G110: Potential DoS vulnerability via decompression bomb
-		for {
-			_, err := io.CopyN(dstFile, fileInArchive, 1024)
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return err
-			}
-		}
-
+		// Copy with size limit to prevent decompression bombs
+		written, err := io.CopyN(dstFile, fileInArchive, maxFileSize)
 		fileInArchive.Close()
 		dstFile.Close()
 
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return fmt.Errorf("failed to copy file contents %s: %w", f.Name, err)
+		}
+
+		// Verify the copied size matches expected
+		if written != int64(f.UncompressedSize64) && err != io.EOF {
+			return fmt.Errorf("file size mismatch for %s: expected %d, got %d", f.Name, f.UncompressedSize64, written)
 		}
 	}
 
@@ -109,44 +145,70 @@ func downloadTerraform(version string) error {
 	osType := getEnv(archEnvKey, defaultOSType)
 	arch := getEnv(osTypeEnvKey, defaultArch)
 	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
-	fmt.Println(Yellow + "Downloading " + terraformDownloadURL + Reset)
+	LogInfo("Downloading %s", terraformDownloadURL)
+
+	// Create HTTP client with security configurations
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		},
+	}
+
+	// Create request with context for timeout control
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", terraformDownloadURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set User-Agent header
+	req.Header.Set("User-Agent", "tfenvgo/"+Version)
 
 	// Get the data
-	resp, err := http.Get(terraformDownloadURL) //nolint
+	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to download: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("failed to download file: %s", resp.Status)
 	}
-	// Create the file
-	filepath := filepath.Join("/tmp", path.Base(resp.Request.URL.String()))
 
-	out, err := os.Create(filepath)
+	// Create the file with secure temp directory
+	tempDir := os.TempDir()
+	filepath := filepath.Join(tempDir, path.Base(resp.Request.URL.String()))
+
+	out, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	defer out.Close()
-	fmt.Println(Yellow + "Downloaded file to " + filepath + Reset)
+	LogInfo("Downloaded file to %s", filepath)
 
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-
-	if err != nil {
-		return err
+	// Write the body to file with size limit to prevent zip bombs
+	const maxFileSize = 500 * 1024 * 1024 // 500MB limit
+	_, err = io.CopyN(out, resp.Body, maxFileSize)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("failed to write file: %w", err)
 	}
 
 	err = unarchiveZip(filepath, version)
-
 	if err != nil {
-		return fmt.Errorf("failed to unarchive: %v", err)
+		return fmt.Errorf("failed to unarchive: %w", err)
 	}
-	fmt.Println(Yellow + "Removing " + filepath + Reset)
-	os.Remove(filepath)
-	fmt.Println(Yellow + filepath + " removed")
-	return err
+
+	LogInfo("Removing %s", filepath)
+	if err := os.Remove(filepath); err != nil {
+		LogWarn("Warning: failed to remove temp file: %s", err.Error())
+	}
+	LogInfo("%s removed", filepath)
+	return nil
 }
 
 func installTerraform(version string) {
@@ -154,12 +216,12 @@ func installTerraform(version string) {
 	if os.IsNotExist(err) {
 		err := downloadTerraform(version)
 		if err != nil {
-			fmt.Println(Red+"error downloading:", err)
+			LogError("error downloading: %v", err)
 			return
 		}
-		fmt.Println(Green + "Terraform v" + version + " has been installed" + Reset)
+		LogInfo("Terraform v%s has been installed", version)
 	} else {
-		fmt.Println(Yellow + "Terraform v" + version + " is already installed." + Reset)
+		LogWarn("Terraform v%s is already installed.", version)
 	}
 }
 
