@@ -8,10 +8,36 @@ import (
 
 const terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 
-var rootURL = filepath.Join(os.Getenv("HOME"), ".tfenvgo")
-var terraformBinPath = filepath.Join(rootURL, "bin")
-var terraformVersionPath = filepath.Join(rootURL, "versions")
-var currentTerraformVersionPath = filepath.Join(terraformBinPath, "terraform")
+// getUserHomeDir safely gets the user home directory
+func getUserHomeDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return homeDir, nil
+}
+
+// Initialize paths safely
+func initPaths() error {
+	homeDir, err := getUserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	rootURL = filepath.Join(homeDir, ".tfenvgo")
+	terraformBinPath = filepath.Join(rootURL, "bin")
+	terraformVersionPath = filepath.Join(rootURL, "versions")
+	currentTerraformVersionPath = filepath.Join(terraformBinPath, "terraform")
+
+	return nil
+}
+
+var (
+	rootURL                     string
+	terraformBinPath            string
+	terraformVersionPath        string
+	currentTerraformVersionPath string
+)
 
 // System
 var defaultArch = runtime.GOARCH
