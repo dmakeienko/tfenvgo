@@ -1,3 +1,17 @@
+# [1.7.0](https://github.com/dmakeienko/tfenvgo/compare/v1.6.1...v1.7.0) (2025-08-15)
+
+
+### Bug Fixes
+
+* G115: integer overflow conversion uint64 -> int64 (gosec) ([a75917d](https://github.com/dmakeienko/tfenvgo/commit/a75917d49337b77906dbc7b49410da825a3c0c1f))
+* getTerraformVersionConstraint() didnt close file ([6c2788c](https://github.com/dmakeienko/tfenvgo/commit/6c2788c4c4dcc03706f7bd234fa87ee0ecf0b9e8))
+
+
+### Features
+
+* add logger ([b3d4639](https://github.com/dmakeienko/tfenvgo/commit/b3d4639e6b44733dfda294371c9da3d2b081eda6))
+* zip bomb vulnerability handling; use HTTPS to for remote calls ([7e23a47](https://github.com/dmakeienko/tfenvgo/commit/7e23a47bb97a12ec79f0d750c4ee6cdd1331ddd5))
+
 ## [1.6.1](https://github.com/dmakeienko/tfenvgo/compare/v1.6.0...v1.6.1) (2025-02-24)
 
 
