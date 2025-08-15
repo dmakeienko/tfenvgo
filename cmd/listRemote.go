@@ -22,18 +22,43 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"regexp"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/net/html"
 )
 
 func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
-	resp, err := http.Get(terraformReleasesURL)
+	// Create HTTP client with security configurations
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		},
+	}
+
+	// Create request with context
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", terraformReleasesURL, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set User-Agent header
+	req.Header.Set("User-Agent", "tfenvgo/"+Version)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch releases: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -89,12 +114,12 @@ var listRemoteCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 		if err != nil {
-			fmt.Println("Failed to get versions:", err)
+			LogError("Failed to get versions: %v", err)
 			return
 		}
-		fmt.Println(Green + "Available versions:" + Reset)
+		LogInfo("Available versions:")
 		for _, v := range versions {
-			fmt.Println(Gray + v + Reset)
+			LogInfo("%s", v)
 		}
 	},
 }

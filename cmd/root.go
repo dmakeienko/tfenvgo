@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -39,6 +40,12 @@ var rootCmd = &cobra.Command{
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	// Initialize paths before executing commands
+	if err := initPaths(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error initializing paths: %v\n", err)
+		os.Exit(1)
+	}
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)

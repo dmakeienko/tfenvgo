@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -31,8 +30,11 @@ import (
 )
 
 func uninstallTerraform(version string) {
-	os.RemoveAll(filepath.Join(terraformVersionPath, version))
-	fmt.Println(Yellow + "Uninstalled Terraform version v" + version + Reset)
+	if err := os.RemoveAll(filepath.Join(terraformVersionPath, version)); err != nil {
+		LogError("failed to remove version %s: %v", version, err)
+		return
+	}
+	LogInfo("Uninstalled Terraform version v%s", version)
 }
 
 // uninstallCmd represents the uninstall command
@@ -66,13 +68,18 @@ var uninstallCmd = &cobra.Command{
 		if version == latestArg && versionRegex == nil {
 			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
-				fmt.Println("failed to get latest version: %w", err)
+				LogError("failed to get latest version: %v", err)
+				return
+			}
+			if len(versions) == 0 {
+				LogError("no local versions found")
+				return
 			}
 			version = versions[0]
 		} else if version == latestArg && versionRegex != nil {
 			latestRegexVersion, err := getLatestAllowed("local", versionRegex.String())
 			if err != nil {
-				fmt.Println(Red + "Failed to get latest regex version: " + err.Error() + Reset)
+				LogError("Failed to get latest regex version: %v", err)
 				return
 			}
 			version = latestRegexVersion

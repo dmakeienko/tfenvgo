@@ -8,6 +8,9 @@ permissions:
   contents: write
   packages: write
 
+env:
+  GO_VERSION: '1.24.6'
+
 jobs:
   release-linux-amd64:
     name: release linux/amd64
@@ -24,9 +27,9 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23.5'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set version
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
@@ -55,9 +58,9 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23.5'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set version
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
@@ -86,9 +89,9 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23.5'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set version
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
@@ -117,9 +120,9 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.23.5'
+          go-version: ${{ env.GO_VERSION }}
 
       - name: Set version
         run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
