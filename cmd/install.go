@@ -134,8 +134,8 @@ func unarchiveZip(archivePath, version string) error {
 		if filepath.Base(filePath) == "terraform" {
 			perm = 0o755
 		}
-		// Path is validated above; safe to open. nolint:gosec
-		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm) //nolint:gosec
+		// Path is validated above; safe to open.
+		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 		if err != nil {
 			return fmt.Errorf("failed to create file %s: %w", filePath, err)
 		}

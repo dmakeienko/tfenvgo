@@ -56,8 +56,8 @@ func getTerraformVersionConstraint() (string, error) {
 		if !strings.HasPrefix(absFile, absCwd+string(os.PathSeparator)) && absFile != absCwd {
 			return "", fmt.Errorf("file path outside current directory: %s", entry.Name())
 		}
-		// Path is validated above; safe to open. nolint:gosec
-		file, err := os.Open(filePath) //nolint:gosec
+		// Path is validated above; safe to open.
+		file, err := os.Open(filePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to open file %s: %w", entry.Name(), err)
 		}
@@ -209,8 +209,8 @@ func readVersionFromFile() (string, error) {
 		// defensive: construct with Join
 		path = filepath.Join(cwd, terraformVersionFilename)
 	}
-	// Path is validated above; safe to open. nolint:gosec
-	file, err := os.Open(path) //nolint:gosec
+	// Path is validated above; safe to open.
+	file, err := os.Open(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to open %s: %w", terraformVersionFilename, err)
 	}

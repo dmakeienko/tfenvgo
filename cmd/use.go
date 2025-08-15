@@ -64,7 +64,7 @@ func useVersion(version string) {
 
 	// Set executable permissions on the symlink target (not the symlink itself)
 	// Intentionally allow executable bit for the terraform binary. Permissions are set to 0755.
-	if err := os.Chmod(terraformSelectedPath, 0o755); err != nil { // nolint:gosec
+	if err := os.Chmod(terraformSelectedPath, 0o755); err != nil {
 		LogError("Failed to update permissions: %v", err)
 		return
 	}
