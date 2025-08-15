@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -33,38 +32,43 @@ import (
 func useVersion(version string) {
 	err := initConfig()
 	if err != nil {
-		fmt.Println("failed to create config: %w", err)
+		LogError("Failed to create config: %v", err)
+		return
 	}
 
 	terraformSelectedPath := filepath.Join(terraformVersionPath, version, "terraform")
 	if _, err := os.Stat(terraformSelectedPath); err != nil {
 		if os.IsNotExist(err) {
-			fmt.Println(Yellow + "Terraform v" + version + " is not installed" + Reset)
-			fmt.Println(Yellow + "Trying to install terraform v" + version + Reset)
+			LogWarn("Terraform v%s is not installed", version)
+			LogInfo("Trying to install terraform v%s", version)
 			installTerraform(version)
+		} else {
+			LogError("Error checking terraform path: %v", err)
+			return
 		}
 	}
+
+	// Remove existing symlink if it exists
 	if _, err := os.Lstat(currentTerraformVersionPath); err == nil {
-		os.Remove(currentTerraformVersionPath)
-		if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
-			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
-			return
-		}
-		if err := os.Chmod(currentTerraformVersionPath, 0775); err != nil {
-			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
-			return
-		}
-	} else {
-		if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
-			fmt.Println(Red + "Failed to create symlink: " + err.Error() + Reset)
-			return
-		}
-		if err := os.Chmod(currentTerraformVersionPath, 0775); err != nil {
-			fmt.Println(Red + "Failed  update permissions: " + err.Error() + Reset)
+		if err := os.Remove(currentTerraformVersionPath); err != nil {
+			LogError("Failed to remove existing symlink: %v", err)
 			return
 		}
 	}
-	fmt.Println(Green + "Changed current terraform version to v" + version + Reset)
+
+	// Create new symlink
+	if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
+		LogError("Failed to create symlink: %v", err)
+		return
+	}
+
+	// Set executable permissions on the symlink target (not the symlink itself)
+	if err := os.Chmod(terraformSelectedPath, 0755); err != nil {
+		LogError("Failed to update permissions: %v", err)
+		return
+	}
+
+	LogInfo("Changed current terraform version to v%s", version)
 }
 
 var useCmd = &cobra.Command{
@@ -101,28 +105,28 @@ var useCmd = &cobra.Command{
 		case (version == latestArg && versionRegex == nil):
 			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
-				fmt.Println("failed to use check installed version: %w", err)
+				LogError("failed to use check installed version: %w", err)
 				return
 			}
 			version = versions[0]
 		case (version == minRequiredArg):
 			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
-				fmt.Println(Red + "Failed to use minimum required version: " + err.Error() + Reset)
+				LogError("Failed to use minimum required version: " + err.Error())
 				return
 			}
 			version = minRequiredVersion
 		case (version == latestAllowedArg):
 			latestAllowedVersion, err := getLatestAllowed("remote", "")
 			if err != nil {
-				fmt.Println(Red + "Failed to use latest allowed version: " + err.Error() + Reset)
+				LogError("Failed to use latest allowed version: " + err.Error())
 				return
 			}
 			version = latestAllowedVersion
 		case (version == latestArg && versionRegex != nil):
 			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
 			if err != nil {
-				fmt.Println(Red + "Failed to get latest regex version: " + err.Error() + Reset)
+				LogError("Failed to get latest regex version: " + err.Error())
 				return
 			}
 			version = latestRegexVersion
