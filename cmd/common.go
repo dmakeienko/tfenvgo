@@ -48,9 +48,8 @@ func getTerraformVersionConstraint() (string, error) {
 		// Open file for reading
 		file, err := os.Open(filepath.Join(cwd, entry.Name()))
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to open file %s: %w", entry.Name(), err)
 		}
-		defer file.Close()
 
 		// Scan file line by line
 		scanner := bufio.NewScanner(file)
@@ -58,16 +57,20 @@ func getTerraformVersionConstraint() (string, error) {
 			line := scanner.Text()
 			if matches := requiredVersionPattern.FindStringSubmatch(line); matches != nil {
 				requiredVersion = matches[1]
+				file.Close()
 				return requiredVersion, nil // Stop once we find the required version
 			}
 		}
+
 		if err := scanner.Err(); err != nil {
-			return "", err
+			file.Close()
+			return "", fmt.Errorf("error scanning file %s: %w", entry.Name(), err)
 		}
+		file.Close()
 	}
 
 	if requiredVersion == "" {
-		return "", fmt.Errorf("required_version not found")
+		return "", fmt.Errorf("required_version not found in any .tf files")
 	}
 
 	return requiredVersion, nil
@@ -75,7 +78,7 @@ func getTerraformVersionConstraint() (string, error) {
 
 func getMinRequired(target string) (string, error) {
 	terraformVersionContraint, _ := getTerraformVersionConstraint()
-	fmt.Println("Found version constraint: " + terraformVersionContraint)
+	LogInfo("Found version constraint: %s", terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
 	if err != nil {
 		return "", fmt.Errorf("invalid constraint: %w", err)
@@ -121,7 +124,7 @@ func getLatestAllowed(target, constraint string) (string, error) {
 	} else {
 		terraformVersionContraint = constraint
 	}
-	fmt.Println("Found version constraint: " + terraformVersionContraint)
+	LogInfo("Found version constraint: %s", terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
 	if err != nil {
 		return "", fmt.Errorf("invalid constraint: %w", err)
@@ -171,7 +174,7 @@ func validateArg(arg string, allowedVersions map[string]bool) error {
 		for k := range allowedVersions {
 			validArgs = append(validArgs, k)
 		}
-		fmt.Println(Red + "Invalid version provided. Allowed values are: " + strings.Join(validArgs, ", ") + " or a valid semver version" + Reset)
+		LogError("Invalid version provided. Allowed values are: %s or a valid semver version", strings.Join(validArgs, ", "))
 		return err
 	}
 	return nil
@@ -185,26 +188,29 @@ func readVersionFromFile() (string, error) {
 		return "", fmt.Errorf("error getting current directory: %w", err)
 	}
 	path := filepath.Join(cwd, terraformVersionFilename)
+
 	// Open file for reading
 	file, err := os.Open(path)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to open %s: %w", terraformVersionFilename, err)
 	}
 	defer file.Close()
 
 	// Scan file line by line
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		if matches := terraformVersionRegex.FindStringSubmatch(line); matches != nil {
 			terraformVersion := matches[0]
-			return terraformVersion, err // Stop walking once we find the version, so it will be only first match
+			return terraformVersion, nil // Stop walking once we find the version, so it will be only first match
 		}
 	}
+
 	if err := scanner.Err(); err != nil {
-		return "", err
+		return "", fmt.Errorf("error scanning %s: %w", terraformVersionFilename, err)
 	}
-	return "", err
+
+	return "", fmt.Errorf("no valid version found in %s", terraformVersionFilename)
 }
 
 func getCurrentTerraformVersion() (string, error) {
