@@ -29,47 +29,51 @@ Currently, `tfenvgo` supports the following OS:
 
 ### Manual
 
-1. Get the latest release:
+1. Get the latest release using this onelinerL
 
-    ```sh
-    VERSION=$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)
-    ```
+  ```sh
+  curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$(uname -m).tar.gz" | tar xzf -
+  ```
 
-2. Download the archive:
+OR
 
-    > **NOTE:** Don't forget to change `arch` and `os` if yours are different.
+Download specific version:
 
-    ```sh
-    curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-linux-amd64.tar.gz
-    ```
+  ```sh
+  VERSION="vx.y.z"
+  PLATFORM=$(uname -s)
+  ARCH=$(uname -m)
 
-3. Unarchive it:
+  curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
+  ```
 
-    ```sh
-    tar -xvzf tfenvgo-$VERSION-linux-amd64.tar.gz
-    ```
+Then unarchive it:
 
-4. Install `tfenvgo` into any location that is in your `PATH`:
+  ```sh
+  tar -xvzf tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
+  ```
 
-    ```sh
-    sudo mv tfenvgo /usr/local/bin
-    ```
+2. Install `tfenvgo` into any location that is in your `PATH`:
 
-5. Update your shell profile:
+  ```sh
+  sudo mv tfenvgo /usr/local/bin
+  ```
 
-    Add the following line to your shell config file:
+3. Update your shell profile:
 
-    ```sh
-    export PATH=$PATH:$HOME/.tfenvgo/bin
-    ```
+  Add the following line to your shell config file:
 
-    Optionally, run:
+  ```sh
+  export PATH=$PATH:$HOME/.tfenvgo/bin
+  ```
 
-    ```sh
-    tfenvgo init
-    ```
+  Optionally, run:
 
-    This command will precreate the `$HOME/.tfenvgo/bin` folder structure.
+  ```sh
+  tfenvgo init
+  ```
+
+  This command will precreate the `$HOME/.tfenvgo/bin` folder structure.
 
 ## Usage
 
