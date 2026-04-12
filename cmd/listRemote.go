@@ -56,6 +56,7 @@ func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, erro
 	// Set User-Agent header
 	req.Header.Set("User-Agent", "tfenvgo/"+Version)
 
+	// #nosec G704 - URL is hardcoded terraformReleasesURL
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch releases: %w", err)

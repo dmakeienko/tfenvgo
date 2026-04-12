@@ -118,6 +118,7 @@ func unarchiveZip(archivePath, version string) error {
 
 		if f.FileInfo().IsDir() {
 			LogInfo("Creating directory: %s", filePath)
+			// #nosec G703 - Path is validated above with filepath.Rel and HasPrefix checks
 			if err := os.MkdirAll(filePath, 0o750); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", filePath, err)
 			}
@@ -125,6 +126,7 @@ func unarchiveZip(archivePath, version string) error {
 		}
 
 		// Create parent directories if they don't exist
+		// #nosec G703 - Path is validated above with filepath.Rel and HasPrefix checks
 		if err := os.MkdirAll(filepath.Dir(filePath), 0o750); err != nil {
 			return fmt.Errorf("failed to create parent directory for %s: %w", filePath, err)
 		}
@@ -134,7 +136,7 @@ func unarchiveZip(archivePath, version string) error {
 		if filepath.Base(filePath) == "terraform" {
 			perm = 0o755
 		}
-		// Path is validated above; safe to open.
+		// #nosec G703 - Path is validated above with filepath.Rel and HasPrefix checks
 		dstFile, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
 		if err != nil {
 			return fmt.Errorf("failed to create file %s: %w", filePath, err)
@@ -207,6 +209,7 @@ func downloadTerraform(version string) error {
 	req.Header.Set("User-Agent", "tfenvgo/"+Version)
 
 	// Get the data
+	// #nosec G704 - URL is constructed from hardcoded terraformReleasesURL and version
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
@@ -235,6 +238,7 @@ func downloadTerraform(version string) error {
 	// Write with size cap
 	_, err = io.CopyN(tmpFile, resp.Body, maxFileSize)
 	if err != nil && err != io.EOF {
+		// #nosec G703 - filepath is from os.CreateTemp(), safe temporary path
 		_ = os.Remove(filepath)
 		return fmt.Errorf("failed to write file: %w", err)
 	}
@@ -245,6 +249,7 @@ func downloadTerraform(version string) error {
 	}
 
 	LogInfo("Removing %s", filepath)
+	// #nosec G703 - filepath is from os.CreateTemp(), safe temporary path
 	if err := os.Remove(filepath); err != nil {
 		LogWarn("Warning: failed to remove temp file: %s", err.Error())
 	}
