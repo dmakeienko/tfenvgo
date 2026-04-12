@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/dmakeienko/tfenvgo/compare/v1.7.0...v1.7.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* **chore:** upgrade go to 1.26.2 ([9947ed9](https://github.com/dmakeienko/tfenvgo/commit/9947ed989a9d09bfe604a2536fbe225a6c7a2cdd))
+
 # [1.7.0](https://github.com/dmakeienko/tfenvgo/compare/v1.6.1...v1.7.0) (2025-08-15)
 
 
