@@ -249,8 +249,3 @@ func getCurrentVersion(flv string) (string, error) {
 	// The version dir is the second-to-last component: .../versions/<flavor>/<version>/<binary>
 	return parts[len(parts)-2], nil
 }
-
-// getCurrentTerraformVersion is kept for compatibility; delegates to getCurrentVersion.
-func getCurrentTerraformVersion() (string, error) {
-	return getCurrentVersion(FlavorTerraform)
-}

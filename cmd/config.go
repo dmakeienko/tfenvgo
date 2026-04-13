@@ -81,7 +81,6 @@ func initPaths() error {
 	rootURL = filepath.Join(homeDir, ".tfenvgo")
 	terraformBinPath = filepath.Join(rootURL, "bin")
 	terraformVersionPath = filepath.Join(rootURL, "versions")
-	currentTerraformVersionPath = filepath.Join(terraformBinPath, "terraform")
 
 	// One-time migration: if versionsRoot contains semver dirs directly (old layout),
 	// move them under versions/terraform/.
@@ -132,11 +131,10 @@ func migrateVersionsLayout() error {
 }
 
 var (
-	rootURL                     string
-	terraformBinPath            string
-	terraformVersionPath        string
-	currentTerraformVersionPath string
-	flavorFlag                  string
+	rootURL              string
+	terraformBinPath     string
+	terraformVersionPath string
+	flavorFlag           string
 )
 
 // System
