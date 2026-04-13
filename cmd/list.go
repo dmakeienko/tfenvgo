@@ -31,8 +31,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, error) {
-	files, err := os.ReadDir(versionsDir(flv))
+func getLocalTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
+	files, err := os.ReadDir(terraformVersionPath)
 	if err != nil {
 		return nil, err
 	}
@@ -70,23 +70,22 @@ func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, er
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all installed versions",
+	Short: "List all installed Terraform versions",
 	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
-		versions, err := getLocalVersions(flv, PreReleaseVersionsIncluded)
+		versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 		if err != nil {
-			fmt.Printf("failed to list installed versions: %v\n", err)
+			fmt.Println("failed to list installed versions: %w", err)
 			return
 		}
-		currentVersion, err := getCurrentVersion(flv)
+		currentTerraformVersion, err := getCurrentTerraformVersion()
 		if err != nil {
-			currentVersion = ""
+			return
 		}
 
-		fmt.Println(Green + "Installed " + flv + " versions:" + Reset)
+		fmt.Println(Green + "Installed Terraform versions:" + Reset)
 		for _, v := range versions {
-			if v == currentVersion {
-				fmt.Println(Green + "---> " + v + " (set by " + currentSymlinkPath(flv) + ")" + Reset)
+			if v == currentTerraformVersion {
+				fmt.Println(Green + "---> " + v + " (set by " + terraformBinPath + ")" + Reset)
 			} else {
 				fmt.Println("     " + Gray + v + Reset)
 			}

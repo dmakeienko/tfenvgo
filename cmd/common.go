@@ -57,7 +57,7 @@ func getTerraformVersionConstraint() (string, error) {
 			return "", fmt.Errorf("file path outside current directory: %s", entry.Name())
 		}
 		// Path is validated above; safe to open.
-		file, err := os.Open(filePath) // #nosec G304 - path is validated above
+		file, err := os.Open(filePath)
 		if err != nil {
 			return "", fmt.Errorf("failed to open file %s: %w", entry.Name(), err)
 		}
@@ -90,7 +90,7 @@ func getTerraformVersionConstraint() (string, error) {
 	return requiredVersion, nil
 }
 
-func getMinRequired(flv, target string) (string, error) {
+func getMinRequired(target string) (string, error) {
 	terraformVersionContraint, _ := getTerraformVersionConstraint()
 	LogInfo("Found version constraint: %s", terraformVersionContraint)
 	constraints, err := semver.NewConstraint(terraformVersionContraint)
@@ -98,20 +98,21 @@ func getMinRequired(flv, target string) (string, error) {
 		return "", fmt.Errorf("invalid constraint: %w", err)
 	}
 
-	var versions []string
+	var terraformVersions []string
 	switch target {
 	case "local":
-		versions, _ = getLocalVersions(flv, false)
+		terraformVersions, _ = getLocalTerraformVersions(false)
+
 	case "remote":
-		versions, _ = getRemoteVersions(flv, false)
+		terraformVersions, _ = getRemoteTerraformVersions(false)
 	}
 
-	if len(versions) == 0 {
-		return "", fmt.Errorf("no %s versions found", flv)
+	if len(terraformVersions) == 0 {
+		return "", fmt.Errorf("no terraform versions found")
 	}
 
 	var validVersions []*semver.Version
-	for _, versionStr := range versions {
+	for _, versionStr := range terraformVersions {
 		version, err := semver.NewVersion(versionStr)
 		if err != nil {
 			continue // Skip invalid versions
@@ -130,7 +131,7 @@ func getMinRequired(flv, target string) (string, error) {
 	return validVersions[0].String(), nil // Return the smallest matching version
 }
 
-func getLatestAllowed(flv, target, constraint string) (string, error) {
+func getLatestAllowed(target, constraint string) (string, error) {
 	var terraformVersionContraint string
 	if constraint == "" {
 		terraformVersionContraint, _ = getTerraformVersionConstraint()
@@ -143,20 +144,21 @@ func getLatestAllowed(flv, target, constraint string) (string, error) {
 		return "", fmt.Errorf("invalid constraint: %w", err)
 	}
 
-	var versions []string
+	var terraformVersions []string
 	switch target {
 	case "local":
-		versions, _ = getLocalVersions(flv, false)
+		terraformVersions, _ = getLocalTerraformVersions(false)
+
 	case "remote":
-		versions, _ = getRemoteVersions(flv, false)
+		terraformVersions, _ = getRemoteTerraformVersions(false)
 	}
 
-	if len(versions) == 0 {
-		return "", fmt.Errorf("no %s versions found", flv)
+	if len(terraformVersions) == 0 {
+		return "", fmt.Errorf("no terraform versions found")
 	}
 
 	var validVersions []*semver.Version
-	for _, versionStr := range versions {
+	for _, versionStr := range terraformVersions {
 		version, err := semver.NewVersion(versionStr)
 		if err != nil {
 			continue // Skip invalid versions
@@ -170,7 +172,7 @@ func getLatestAllowed(flv, target, constraint string) (string, error) {
 		return "", fmt.Errorf("no available versions satisfy the constraint")
 	}
 
-	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getRemoteVersions() returns versions in desc order, sort it to ensure it
+	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getRemoteTerraformVersions() returns versions in desc order, sort it to ensure it
 
 	return validVersions[0].String(), nil // Return the highest matching version
 }
@@ -208,7 +210,7 @@ func readVersionFromFile() (string, error) {
 		path = filepath.Join(cwd, terraformVersionFilename)
 	}
 	// Path is validated above; safe to open.
-	file, err := os.Open(path) // #nosec G304 - path is constructed from cwd + known filename
+	file, err := os.Open(path)
 	if err != nil {
 		return "", fmt.Errorf("failed to open %s: %w", terraformVersionFilename, err)
 	}
@@ -235,17 +237,13 @@ func readVersionFromFile() (string, error) {
 	return "", fmt.Errorf("no valid version found in %s", terraformVersionFilename)
 }
 
-// getCurrentVersion reads the symlink for the given flavor and returns the active version string.
-func getCurrentVersion(flv string) (string, error) {
-	symlinkPath := currentSymlinkPath(flv)
-	target, err := os.Readlink(symlinkPath)
+func getCurrentTerraformVersion() (string, error) {
+	currentTerraformBinPath, err := os.Readlink(currentTerraformVersionPath)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve symlink to current %s version", flv)
+		return "", fmt.Errorf("failed to resolve symlink to current terraform version")
 	}
-	parts := strings.Split(target, string(filepath.Separator))
-	if len(parts) < 2 {
-		return "", fmt.Errorf("unexpected symlink target format: %s", target)
-	}
-	// The version dir is the second-to-last component: .../versions/<flavor>/<version>/<binary>
-	return parts[len(parts)-2], nil
+	currentTerraformVersionPath := strings.Split(currentTerraformBinPath, "/")
+	currentTerraforVersion := currentTerraformVersionPath[len(currentTerraformVersionPath)-2]
+
+	return currentTerraforVersion, err
 }

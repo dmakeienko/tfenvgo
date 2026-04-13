@@ -29,26 +29,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func uninstallBinary(flv, version string) {
-	if err := os.RemoveAll(filepath.Join(versionsDir(flv), version)); err != nil {
+func uninstallTerraform(version string) {
+	if err := os.RemoveAll(filepath.Join(terraformVersionPath, version)); err != nil {
 		LogError("failed to remove version %s: %v", version, err)
 		return
 	}
-	LogInfo("Uninstalled %s version v%s", flv, version)
+	LogInfo("Uninstalled Terraform version v%s", version)
 }
 
 // uninstallCmd represents the uninstall command
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Uninstall a specific Terraform or OpenTofu version",
+	Short: "Uninstall a specific Terraform version",
 	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
-
 		var version string
 		var versionRegex *regexp.Regexp
 		if len(args) == 0 {
-			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, latestArg))
+			version = getEnv(terraformVersionEnvKey, latestArg)
 			if version == "" {
 				version = latestArg
 			}
@@ -68,7 +66,7 @@ var uninstallCmd = &cobra.Command{
 		}
 
 		if version == latestArg && versionRegex == nil {
-			versions, err := getLocalVersions(flv, PreReleaseVersionsIncluded)
+			versions, err := getLocalTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				LogError("failed to get latest version: %v", err)
 				return
@@ -79,14 +77,14 @@ var uninstallCmd = &cobra.Command{
 			}
 			version = versions[0]
 		} else if version == latestArg && versionRegex != nil {
-			latestRegexVersion, err := getLatestAllowed(flv, "local", versionRegex.String())
+			latestRegexVersion, err := getLatestAllowed("local", versionRegex.String())
 			if err != nil {
 				LogError("Failed to get latest regex version: %v", err)
 				return
 			}
 			version = latestRegexVersion
 		}
-		uninstallBinary(flv, version)
+		uninstallTerraform(version)
 	},
 }
 

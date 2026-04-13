@@ -29,69 +29,59 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func useVersion(flv, version string) {
+func useVersion(version string) {
 	err := initConfig()
 	if err != nil {
 		LogError("Failed to create config: %v", err)
 		return
 	}
 
-	binPath := installedBinaryPath(flv, version)
-	if _, err := os.Stat(binPath); err != nil {
+	terraformSelectedPath := filepath.Join(terraformVersionPath, version, "terraform")
+	if _, err := os.Stat(terraformSelectedPath); err != nil {
 		if os.IsNotExist(err) {
-			LogWarn("%s v%s is not installed", flv, version)
-			LogInfo("Trying to install %s v%s", flv, version)
-			installBinary(flv, version)
+			LogWarn("Terraform v%s is not installed", version)
+			LogInfo("Trying to install terraform v%s", version)
+			installTerraform(version)
 		} else {
-			LogError("Error checking %s path: %v", flv, err)
+			LogError("Error checking terraform path: %v", err)
 			return
 		}
 	}
 
-	symlinkPath := currentSymlinkPath(flv)
-
-	// Ensure bin directory exists
-	if err := os.MkdirAll(filepath.Dir(symlinkPath), 0o750); err != nil {
-		LogError("Failed to create bin directory: %v", err)
-		return
-	}
-
 	// Remove existing symlink if it exists
-	if _, err := os.Lstat(symlinkPath); err == nil {
-		if err := os.Remove(symlinkPath); err != nil {
+	if _, err := os.Lstat(currentTerraformVersionPath); err == nil {
+		if err := os.Remove(currentTerraformVersionPath); err != nil {
 			LogError("Failed to remove existing symlink: %v", err)
 			return
 		}
 	}
 
 	// Create new symlink
-	if err := os.Symlink(binPath, symlinkPath); err != nil {
+	if err := os.Symlink(terraformSelectedPath, currentTerraformVersionPath); err != nil {
 		LogError("Failed to create symlink: %v", err)
 		return
 	}
 
-	// Set executable permissions on the symlink target
-	// Intentionally allow executable bit for the binary. Permissions are set to 0755.
-	if err := os.Chmod(binPath, 0o755); err != nil {
+	// Set executable permissions on the symlink target (not the symlink itself)
+	// Intentionally allow executable bit for the terraform binary. Permissions are set to 0755.
+	if err := os.Chmod(terraformSelectedPath, 0o755); err != nil {
 		LogError("Failed to update permissions: %v", err)
 		return
 	}
 
-	LogInfo("Changed current %s version to v%s", flv, version)
+	LogInfo("Changed current terraform version to v%s", version)
 }
 
 var useCmd = &cobra.Command{
 	Use:   "use",
-	Short: "Change the current Terraform or OpenTofu version",
+	Short: "Change the current Terraform version",
 	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
-
 		var version string
 		var versionRegex *regexp.Regexp
 		versionFromFile, _ := readVersionFromFile()
 		if len(args) == 0 {
-			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, versionFromFile))
+			version = getEnv(terraformVersionEnvKey, versionFromFile)
 			if version == "" {
 				version = latestArg
 			}
@@ -114,7 +104,7 @@ var useCmd = &cobra.Command{
 
 		switch {
 		case (version == latestArg && versionRegex == nil):
-			versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
+			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
 			if err != nil {
 				LogError("failed to use check installed version: %v", err)
 				return
@@ -125,28 +115,28 @@ var useCmd = &cobra.Command{
 			}
 			version = versions[0]
 		case (version == minRequiredArg):
-			minRequiredVersion, err := getMinRequired(flv, "remote")
+			minRequiredVersion, err := getMinRequired("remote")
 			if err != nil {
 				LogError("Failed to use minimum required version: %v", err)
 				return
 			}
 			version = minRequiredVersion
 		case (version == latestAllowedArg):
-			latestAllowedVersion, err := getLatestAllowed(flv, "remote", "")
+			latestAllowedVersion, err := getLatestAllowed("remote", "")
 			if err != nil {
 				LogError("Failed to use latest allowed version: %v", err)
 				return
 			}
 			version = latestAllowedVersion
 		case (version == latestArg && versionRegex != nil):
-			latestRegexVersion, err := getLatestAllowed(flv, "remote", versionRegex.String())
+			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
 			if err != nil {
 				LogError("Failed to get latest regex version: %v", err)
 				return
 			}
 			version = latestRegexVersion
 		}
-		useVersion(flv, version)
+		useVersion(version)
 	},
 }
 
