@@ -1,8 +1,12 @@
 # tfenvgo
 
-Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but written in Go.
+Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but written in Go. Now supports Opentofu!
 
 > **WARNING:** This is my first project written in Go to learn it. It is inspired by `tfenv`, but is written without inspecting the source, only documentation is used.
+
+## OpenTofu support
+
+`tfenvgo` manages both **Terraform** and **OpenTofu** (`tofu`) side-by-side. Use the `--flavor` flag or the `flavor` command to switch between them.
 
 ## Why use `tfenvgo` instead of `tfenv`?
 
@@ -12,10 +16,11 @@ Here are the reasons:
 2. `min-required` and `latest-allowed` don't have limitations as `tfenv`: `tfenvgo` uses real Go regex.
 3. Ability to work with *pre-release* Terraform versions (see `--include-prerelease` flag).
 4. `tfenvgo` is faster by around 50%.
+5. Supports opentofu out of the box
 
 ## Support
 
-Currently, `tfenvgo` supports the following OS:
+Currently, `tfenvgo` supports the following OS and archs:
 
 * Linux
   * AMD64
@@ -25,33 +30,87 @@ Currently, `tfenvgo` supports the following OS:
   * ARM64
 * Windows - *Not supported and will not be*
 
+### Quickstart
+
+```sh
+# Set OpenTofu as the persistent default
+tfenvgo flavor tofu
+
+# Install and activate the latest OpenTofu release
+tfenvgo install latest
+tfenvgo use latest
+
+# Now ~/.tfenvgo/bin/tofu points to the installed binary
+tofu version
+
+# Override flavor for a single command without changing the default
+tfenvgo install latest --flavor terraform
+tfenvgo list --flavor terraform
+```
+
+Both flavors are fully isolated — installed versions live under separate directories and have independent active-version symlinks:
+
+```text
+~/.tfenvgo/
+├── flavor                          # persisted default: "tofu" or "terraform"
+├── bin/
+│   ├── terraform -> ../versions/terraform/1.5.7/terraform
+│   └── tofu      -> ../versions/tofu/1.8.0/tofu
+└── versions/
+    ├── terraform/1.5.7/terraform
+    └── tofu/1.8.0/tofu
+```
+
+### Flavor resolution order
+
+1. `--flavor <value>` flag (highest priority)
+2. `TFENVGO_FLAVOR` environment variable
+3. `~/.tfenvgo/flavor` file (written by `tfenvgo flavor <value>`)
+4. `terraform` (built-in default)
+
+### tfenvgo flavor [tofu|terraform]
+
+Get or set the default binary flavor.
+
+```sh
+# Print the currently resolved flavor and where it comes from
+tfenvgo flavor
+
+# Persist "tofu" as the default for all future invocations
+tfenvgo flavor tofu
+
+# Switch back to terraform
+tfenvgo flavor terraform
+```
+
 ## Installation
 
 ### Manual
 
-1. Get the latest release using this onelinerL
+1. Get the latest release: 
 
   ```sh
-  curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$(uname -m).tar.gz" | tar xzf -
+  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}; curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$ARCH.tar.gz" | tar xzf -
   ```
 
 OR
 
-Download specific version:
+1.1 Download specific version:
 
   ```sh
-  VERSION="vx.y.z"
+  VERSION="vX.Y.Z"
   PLATFORM=$(uname -s)
-  ARCH=$(uname -m)
+  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}
 
   curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
   ```
 
-Then unarchive it:
+1.2 Then unarchive it:
 
   ```sh
   tar -xvzf tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
   ```
+
 
 2. Install `tfenvgo` into any location that is in your `PATH`:
 
@@ -90,7 +149,6 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**
@@ -115,7 +173,6 @@ Switch to a specific version to use. If no parameter is passed, the version to u
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 ### tfenvgo uninstall [version]
@@ -129,7 +186,6 @@ Uninstall a specific version of Terraform.
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**

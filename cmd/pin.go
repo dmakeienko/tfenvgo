@@ -28,10 +28,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func writeCurrentVersionToFile() error {
-	currentVersion, err := getCurrentTerraformVersion()
+func writeCurrentVersionToFile(flv string) error {
+	currentVersion, err := getCurrentVersion(flv)
 	if err != nil {
-		return fmt.Errorf("failed to get current terraform version: %w", err)
+		return fmt.Errorf("failed to get current %s version: %w", flv, err)
 	}
 
 	terraformVersionFile, err := os.Create(terraformVersionFilename)
@@ -42,9 +42,9 @@ func writeCurrentVersionToFile() error {
 
 	_, err2 := terraformVersionFile.WriteString(currentVersion)
 	if err2 != nil {
-		return fmt.Errorf("failed to write  terraform version to file: %w", err2)
+		return fmt.Errorf("failed to write %s version to file: %w", flv, err2)
 	}
-	fmt.Println(Green + terraformVersionFilename + " file created with current terraform version: " + currentVersion + Reset)
+	fmt.Println(Green + terraformVersionFilename + " file created with current " + flv + " version: " + currentVersion + Reset)
 	return nil
 }
 
@@ -53,9 +53,10 @@ var pinCmd = &cobra.Command{
 	Use:   "pin",
 	Short: "Write the current active version to .terraform-version file",
 	Run: func(cmd *cobra.Command, args []string) {
-		err := writeCurrentVersionToFile()
+		flv := resolveFlavor(flavorFlag)
+		err := writeCurrentVersionToFile(flv)
 		if err != nil {
-			fmt.Println(Red + "Failed to write current terraform version to file: " + err.Error() + Reset)
+			fmt.Println(Red + "Failed to write current " + flv + " version to file: " + err.Error() + Reset)
 			return
 		}
 	},
