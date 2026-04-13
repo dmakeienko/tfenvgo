@@ -39,8 +39,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func unarchiveZip(archivePath, version string) error {
-	dst := filepath.Clean(filepath.Join(terraformVersionPath, version))
+func unarchiveZip(archivePath, flv, version string) error {
+	dst := filepath.Clean(versionsDir(flv))
+	dst = filepath.Join(dst, version)
 
 	archive, err := zip.OpenReader(archivePath)
 	if err != nil {
@@ -56,7 +57,7 @@ func unarchiveZip(archivePath, version string) error {
 	// Safety limits to prevent zip bombs
 	const (
 		maxFiles            = 100
-		maxFileSize  int64  = 100 * 1024 * 1024 // 100MB per file
+		maxFileSize  int64  = 200 * 1024 * 1024 // 200MB per file
 		maxTotalSize uint64 = 500 * 1024 * 1024 // 500MB total
 		maxDepth            = 10
 	)
@@ -65,6 +66,8 @@ func unarchiveZip(archivePath, version string) error {
 		fileCount int
 		totalSize uint64
 	)
+
+	binName := binaryName(flv)
 
 	for _, f := range archive.File {
 		fileCount++
@@ -131,9 +134,9 @@ func unarchiveZip(archivePath, version string) error {
 			return fmt.Errorf("failed to create parent directory for %s: %w", filePath, err)
 		}
 
-		// Create the file with secure permissions (start restrictive). Make terraform executable if that's the file.
+		// Create the file with secure permissions. Make the binary executable.
 		perm := os.FileMode(0o600)
-		if filepath.Base(filePath) == "terraform" {
+		if filepath.Base(filePath) == binName {
 			perm = 0o755
 		}
 		// #nosec G703 - Path is validated above with filepath.Rel and HasPrefix checks
@@ -180,11 +183,18 @@ func unarchiveZip(archivePath, version string) error {
 	return nil
 }
 
-func downloadTerraform(version string) error {
-	osType := getEnv(archEnvKey, defaultOSType)
-	arch := getEnv(osTypeEnvKey, defaultArch)
-	terraformDownloadURL := terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
-	LogInfo("Downloading %s", terraformDownloadURL)
+func downloadBinary(flv, version string) error {
+	osType := getEnv(osTypeEnvKey, defaultOSType)
+	arch := getEnv(archEnvKey, defaultArch)
+
+	var downloadURL string
+	switch flv {
+	case FlavorTofu:
+		downloadURL = tofuDownloadBase + "/v" + version + "/tofu_" + version + "_" + osType + "_" + arch + ".zip"
+	default:
+		downloadURL = terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
+	}
+	LogInfo("Downloading %s", downloadURL)
 
 	// Create HTTP client with security configurations
 	client := &http.Client{
@@ -200,7 +210,7 @@ func downloadTerraform(version string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", terraformDownloadURL, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -209,7 +219,7 @@ func downloadTerraform(version string) error {
 	req.Header.Set("User-Agent", "tfenvgo/"+Version)
 
 	// Get the data
-	// #nosec G704 - URL is constructed from hardcoded terraformReleasesURL and version
+	// #nosec G704 - URL is constructed from hardcoded base URLs and version
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
@@ -226,62 +236,63 @@ func downloadTerraform(version string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	filepath := tmpFile.Name()
+	tmpFilePath := tmpFile.Name()
 	// ensure file is closed and removed on errors
 	defer func() {
 		_ = tmpFile.Close()
 	}()
-	LogInfo("Downloaded file to %s", filepath)
+	LogInfo("Downloaded file to %s", tmpFilePath)
 
 	// Write the body to file with size limit to prevent zip bombs
 	const maxFileSize = 500 * 1024 * 1024 // 500MB limit
 	// Write with size cap
 	_, err = io.CopyN(tmpFile, resp.Body, maxFileSize)
 	if err != nil && err != io.EOF {
-		// #nosec G703 - filepath is from os.CreateTemp(), safe temporary path
-		_ = os.Remove(filepath)
+		// #nosec G703 - tmpFilePath is from os.CreateTemp(), safe temporary path
+		_ = os.Remove(tmpFilePath)
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
-	err = unarchiveZip(filepath, version)
+	err = unarchiveZip(tmpFilePath, flv, version)
 	if err != nil {
 		return fmt.Errorf("failed to unarchive: %w", err)
 	}
 
-	LogInfo("Removing %s", filepath)
-	// #nosec G703 - filepath is from os.CreateTemp(), safe temporary path
-	if err := os.Remove(filepath); err != nil {
+	LogInfo("Removing %s", tmpFilePath)
+	// #nosec G703 - tmpFilePath is from os.CreateTemp(), safe temporary path
+	if err := os.Remove(tmpFilePath); err != nil {
 		LogWarn("Warning: failed to remove temp file: %s", err.Error())
 	}
-	LogInfo("%s removed", filepath)
+	LogInfo("%s removed", tmpFilePath)
 	return nil
 }
 
-func installTerraform(version string) {
-	_, err := os.Stat(filepath.Join(terraformVersionPath, version))
+func installBinary(flv, version string) {
+	_, err := os.Stat(installedBinaryPath(flv, version))
 	if os.IsNotExist(err) {
-		err := downloadTerraform(version)
-		if err != nil {
+		if err := downloadBinary(flv, version); err != nil {
 			LogError("error downloading: %v", err)
 			return
 		}
-		LogInfo("Terraform v%s has been installed", version)
+		LogInfo("%s v%s has been installed", flv, version)
 	} else {
-		LogWarn("Terraform v%s is already installed.", version)
+		LogWarn("%s v%s is already installed.", flv, version)
 	}
 }
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
 	Use:   "install",
-	Short: "Install a specific Terraform version",
+	Short: "Install a specific version of Terraform or OpenTofu",
 	Args:  cobra.MaximumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
+		flv := resolveFlavor(flavorFlag)
+
 		var version string
 		var versionRegex *regexp.Regexp
 		versionFromFile, _ := readVersionFromFile()
 		if len(args) == 0 {
-			version = getEnv(terraformVersionEnvKey, versionFromFile)
+			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, versionFromFile))
 			if version == "" {
 				version = latestArg
 			}
@@ -304,7 +315,7 @@ var installCmd = &cobra.Command{
 
 		switch {
 		case (version == latestArg && versionRegex == nil):
-			versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
+			versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
 			if err != nil {
 				LogError("failed to get latest version: %v", err)
 				return
@@ -315,33 +326,32 @@ var installCmd = &cobra.Command{
 			}
 			version = versions[0]
 		case (version == minRequiredArg):
-			minRequiredVersion, err := getMinRequired("remote")
+			minRequiredVersion, err := getMinRequired(flv, "remote")
 			if err != nil {
 				LogError("Failed to get minimum required version: %v", err)
 				return
 			}
 			version = minRequiredVersion
 		case (version == latestAllowedArg):
-			latestAllowedVersion, err := getLatestAllowed("remote", "")
+			latestAllowedVersion, err := getLatestAllowed(flv, "remote", "")
 			if err != nil {
 				LogError("Failed to get latest allowed version: %v", err)
 				return
 			}
 			version = latestAllowedVersion
 		case (version == latestArg && versionRegex != nil):
-			latestRegexVersion, err := getLatestAllowed("remote", versionRegex.String())
+			latestRegexVersion, err := getLatestAllowed(flv, "remote", versionRegex.String())
 			if err != nil {
 				LogError("Failed to get latest allowed version: %v", err)
 				return
 			}
 			version = latestRegexVersion
 		}
-		installTerraform(version)
+		installBinary(flv, version)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(installCmd)
 	installCmd.Flags().BoolVarP(&PreReleaseVersionsIncluded, "include-prerelease", "", false, "Include pre-release versions")
-
 }

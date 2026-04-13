@@ -4,6 +4,63 @@ Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but wri
 
 > **WARNING:** This is my first project written in Go to learn it. It is inspired by `tfenv`, but is written without inspecting the source, only documentation is used.
 
+## OpenTofu support
+
+`tfenvgo` manages both **Terraform** and **OpenTofu** (`tofu`) side-by-side. Use the `--flavor` flag or the `flavor` command to switch between them.
+
+### Quickstart
+
+```sh
+# Set OpenTofu as the persistent default
+tfenvgo flavor tofu
+
+# Install and activate the latest OpenTofu release
+tfenvgo install latest
+tfenvgo use latest
+
+# Now ~/.tfenvgo/bin/tofu points to the installed binary
+tofu version
+
+# Override flavor for a single command without changing the default
+tfenvgo install latest --flavor terraform
+tfenvgo list --flavor terraform
+```
+
+Both flavors are fully isolated — installed versions live under separate directories and have independent active-version symlinks:
+
+```text
+~/.tfenvgo/
+├── flavor                          # persisted default: "tofu" or "terraform"
+├── bin/
+│   ├── terraform -> ../versions/terraform/1.5.7/terraform
+│   └── tofu      -> ../versions/tofu/1.8.0/tofu
+└── versions/
+    ├── terraform/1.5.7/terraform
+    └── tofu/1.8.0/tofu
+```
+
+### Flavor resolution order
+
+1. `--flavor <value>` flag (highest priority)
+2. `TFENVGO_FLAVOR` environment variable
+3. `~/.tfenvgo/flavor` file (written by `tfenvgo flavor <value>`)
+4. `terraform` (built-in default)
+
+### tfenvgo flavor [tofu|terraform]
+
+Get or set the default binary flavor.
+
+```sh
+# Print the currently resolved flavor and where it comes from
+tfenvgo flavor
+
+# Persist "tofu" as the default for all future invocations
+tfenvgo flavor tofu
+
+# Switch back to terraform
+tfenvgo flavor terraform
+```
+
 ## Why use `tfenvgo` instead of `tfenv`?
 
 Here are the reasons:
@@ -53,13 +110,13 @@ Then unarchive it:
   tar -xvzf tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
   ```
 
-2. Install `tfenvgo` into any location that is in your `PATH`:
+1. Install `tfenvgo` into any location that is in your `PATH`:
 
   ```sh
   sudo mv tfenvgo /usr/local/bin
   ```
 
-3. Update your shell profile:
+1. Update your shell profile:
 
   Add the following line to your shell config file:
 
@@ -90,7 +147,6 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**
@@ -115,7 +171,6 @@ Switch to a specific version to use. If no parameter is passed, the version to u
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 ### tfenvgo uninstall [version]
@@ -129,7 +184,6 @@ Uninstall a specific version of Terraform.
 * `latest "regex"` - Syntax to install the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-
 > NOTE: `latest "regex"` does not work with prerelease versions
 
 **Available flags:**

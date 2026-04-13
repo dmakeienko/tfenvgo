@@ -30,14 +30,15 @@ import (
 var versionNameCmd = &cobra.Command{
 	Use:     "version-name",
 	Aliases: []string{"version"},
-	Short:   "Display the current Terraform version set by tfenvgo",
+	Short:   "Display the current version set by tfenvgo",
 	Run: func(cmd *cobra.Command, args []string) {
-		currentVersion, err := getCurrentTerraformVersion()
+		flv := resolveFlavor(flavorFlag)
+		currentVersion, err := getCurrentVersion(flv)
 		if err != nil {
-			fmt.Println(Red + "Failed to get current terraform version: " + err.Error() + Reset)
+			fmt.Println(Red + "Failed to get current " + flv + " version: " + err.Error() + Reset)
 			return
 		}
-		fmt.Println(Green + "Current Terraform version: " + currentVersion + Reset)
+		fmt.Println("Current " + Magenta + flv + Reset + " version: " + Green + currentVersion + Reset)
 	},
 }
 
