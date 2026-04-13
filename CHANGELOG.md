@@ -1,3 +1,20 @@
+# [2.0.0](https://github.com/dmakeienko/tfenvgo/compare/v1.7.1...v2.0.0) (2026-04-13)
+
+
+### Bug Fixes
+
+* `listRemote` fetch error; implement pagination for tofu releases ([f71c910](https://github.com/dmakeienko/tfenvgo/commit/f71c91016bb5caa58878ecaf0ddc593885f323ad))
+
+
+### Features
+
+* add support for OpenTofu ([8d72272](https://github.com/dmakeienko/tfenvgo/commit/8d72272af5c8ab836a9d12c80436de333ef4a5a5))
+
+
+### BREAKING CHANGES
+
+* support for opentofu
+
 ## [1.7.1](https://github.com/dmakeienko/tfenvgo/compare/v1.7.0...v1.7.1) (2026-04-12)
 
 
