@@ -1,12 +1,34 @@
 # tfenvgo
 
-Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but written in Go.
+Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but written in Go. Now supports Opentofu!
 
 > **WARNING:** This is my first project written in Go to learn it. It is inspired by `tfenv`, but is written without inspecting the source, only documentation is used.
 
 ## OpenTofu support
 
 `tfenvgo` manages both **Terraform** and **OpenTofu** (`tofu`) side-by-side. Use the `--flavor` flag or the `flavor` command to switch between them.
+
+## Why use `tfenvgo` instead of `tfenv`?
+
+Here are the reasons:
+
+1. Distributed as a single binary, easy to install.
+2. `min-required` and `latest-allowed` don't have limitations as `tfenv`: `tfenvgo` uses real Go regex.
+3. Ability to work with *pre-release* Terraform versions (see `--include-prerelease` flag).
+4. `tfenvgo` is faster by around 50%.
+5. Supports opentofu out of the box
+
+## Support
+
+Currently, `tfenvgo` supports the following OS and archs:
+
+* Linux
+  * AMD64
+  * ARM64
+* macOS
+  * AMD64
+  * ARM64
+* Windows - *Not supported and will not be*
 
 ### Quickstart
 
@@ -61,62 +83,42 @@ tfenvgo flavor tofu
 tfenvgo flavor terraform
 ```
 
-## Why use `tfenvgo` instead of `tfenv`?
-
-Here are the reasons:
-
-1. Distributed as a single binary, easy to install.
-2. `min-required` and `latest-allowed` don't have limitations as `tfenv`: `tfenvgo` uses real Go regex.
-3. Ability to work with *pre-release* Terraform versions (see `--include-prerelease` flag).
-4. `tfenvgo` is faster by around 50%.
-
-## Support
-
-Currently, `tfenvgo` supports the following OS:
-
-* Linux
-  * AMD64
-  * ARM64
-* macOS
-  * AMD64
-  * ARM64
-* Windows - *Not supported and will not be*
-
 ## Installation
 
 ### Manual
 
-1. Get the latest release using this onelinerL
+1. Get the latest release: 
 
   ```sh
-  curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$(uname -m).tar.gz" | tar xzf -
+  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}; curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$ARCH.tar.gz" | tar xzf -
   ```
 
 OR
 
-Download specific version:
+1.1 Download specific version:
 
   ```sh
-  VERSION="vx.y.z"
+  VERSION="vX.Y.Z"
   PLATFORM=$(uname -s)
-  ARCH=$(uname -m)
+  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}
 
   curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
   ```
 
-Then unarchive it:
+1.2 Then unarchive it:
 
   ```sh
   tar -xvzf tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
   ```
 
-1. Install `tfenvgo` into any location that is in your `PATH`:
+
+2. Install `tfenvgo` into any location that is in your `PATH`:
 
   ```sh
   sudo mv tfenvgo /usr/local/bin
   ```
 
-1. Update your shell profile:
+3. Update your shell profile:
 
   Add the following line to your shell config file:
 
