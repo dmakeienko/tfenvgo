@@ -24,14 +24,28 @@ package cmd
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
+	"strings"
 	"time"
 
+	"github.com/Masterminds/semver/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/net/html"
 )
+
+// getRemoteVersions dispatches to the flavor-specific implementation.
+func getRemoteVersions(flv string, includePrerelease bool) ([]string, error) {
+	switch flv {
+	case FlavorTofu:
+		return getRemoteTofuVersions(includePrerelease)
+	default:
+		return getRemoteTerraformVersions(includePrerelease)
+	}
+}
 
 func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
 	// Create HTTP client with security configurations
@@ -107,18 +121,87 @@ func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, erro
 	return versions, nil
 }
 
+// getRemoteTofuVersions fetches OpenTofu releases from the GitHub API.
+// TODO: add pagination support once OpenTofu exceeds 100 releases.
+func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
+	client := &http.Client{
+		Timeout: 15 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			},
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	url := tofuReleasesAPI + "?per_page=100"
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "tfenvgo/"+Version)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	// #nosec G704 - URL is constructed from hardcoded tofuReleasesAPI constant
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch tofu releases: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to fetch tofu releases, status: %d", resp.StatusCode)
+	}
+
+	var releases []struct {
+		TagName    string `json:"tag_name"`
+		Prerelease bool   `json:"prerelease"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, fmt.Errorf("failed to decode tofu releases: %w", err)
+	}
+
+	var versions []*semver.Version
+	for _, r := range releases {
+		if r.Prerelease && !includePrerelease {
+			continue
+		}
+		tag := strings.TrimPrefix(r.TagName, "v")
+		v, err := semver.NewVersion(tag)
+		if err != nil {
+			continue
+		}
+		// Skip pre-release semver versions unless requested
+		if !includePrerelease && v.Prerelease() != "" {
+			continue
+		}
+		versions = append(versions, v)
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(versions)))
+
+	var result []string
+	for _, v := range versions {
+		result = append(result, v.String())
+	}
+	return result, nil
+}
+
 // listRemoteCmd represents the listRemote command
 var listRemoteCmd = &cobra.Command{
 	Use:   "list-remote",
-	Short: "List all available Terraform versions",
-	Long:  "List all available Terraform versions",
+	Short: "List all available versions from the remote registry",
+	Long:  "List all available versions from the remote registry (Terraform or OpenTofu depending on --flavor)",
 	Run: func(cmd *cobra.Command, args []string) {
-		versions, err := getRemoteTerraformVersions(PreReleaseVersionsIncluded)
+		flv := resolveFlavor(flavorFlag)
+		versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
 		if err != nil {
 			LogError("Failed to get versions: %v", err)
 			return
 		}
-		LogInfo("Available versions:")
+		LogInfo("Available %s versions:", flv)
 		for _, v := range versions {
 			LogInfo("%s", v)
 		}
