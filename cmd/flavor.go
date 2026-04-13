@@ -50,18 +50,18 @@ the persistent default for all future invocations.`,
 			LogError("Error writing flavor file: %v", err)
 			return
 		}
-		fmt.Printf("Default flavor set to '%s'\n", requested)
+		fmt.Printf("Default flavor set to "+Green+"'%s'\n"+Reset, requested)
 	},
 }
 
 // printResolvedFlavor prints the effective flavor and explains where it came from.
 func printResolvedFlavor() {
 	if flavorFlag != "" {
-		fmt.Printf("Flavor: " + Green + "%s " + Gray + "(source: --flavor flag)\n", flavorFlag)
+		fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: --flavor flag)\n", flavorFlag)
 		return
 	}
 	if env := os.Getenv(flavorEnvKey); env != "" {
-		fmt.Printf("Flavor: %s (source: %s env var)\n", env, flavorEnvKey)
+		fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: %s env var)\n", env, flavorEnvKey)
 		return
 	}
 	flavorFile := filepath.Join(rootURL, "flavor")
@@ -69,11 +69,11 @@ func printResolvedFlavor() {
 	if err == nil {
 		f := strings.TrimSpace(string(data))
 		if f == FlavorTofu || f == FlavorTerraform {
-			fmt.Printf("Flavor: " + Green + "%s " + Gray + "(source: %s)\n", f, flavorFile)
+			fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: %s)\n", f, flavorFile)
 			return
 		}
 	}
-	fmt.Printf("Flavor: " + Green +  "%s " + Gray + "(source: built-in default)\n", FlavorTerraform)
+	fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: built-in default)\n", FlavorTerraform)
 }
 
 func init() {
