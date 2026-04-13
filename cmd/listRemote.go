@@ -121,8 +121,7 @@ func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, erro
 	return versions, nil
 }
 
-// getRemoteTofuVersions fetches OpenTofu releases from the GitHub API.
-// TODO: add pagination support once OpenTofu exceeds 100 releases.
+// getRemoteTofuVersions fetches OpenTofu releases from the GitHub API with pagination support.
 func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
 	client := &http.Client{
 		Timeout: 15 * time.Second,
@@ -133,38 +132,59 @@ func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	url := tofuReleasesAPI + "?per_page=100"
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("User-Agent", "tfenvgo/"+Version)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	// #nosec G704 - URL is constructed from hardcoded tofuReleasesAPI constant
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch tofu releases: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch tofu releases, status: %d", resp.StatusCode)
-	}
-
-	var releases []struct {
+	var allReleases []struct {
 		TagName    string `json:"tag_name"`
 		Prerelease bool   `json:"prerelease"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
-		return nil, fmt.Errorf("failed to decode tofu releases: %w", err)
+
+	page := 1
+	for {
+		url := fmt.Sprintf("%s?per_page=100&page=%d", tofuReleasesAPI, page)
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		req.Header.Set("User-Agent", "tfenvgo/"+Version)
+		req.Header.Set("Accept", "application/vnd.github+json")
+
+		// #nosec G704 - URL is constructed from hardcoded tofuReleasesAPI constant
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch tofu releases: %w", err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to fetch tofu releases, status: %d", resp.StatusCode)
+		}
+
+		var pageReleases []struct {
+			TagName    string `json:"tag_name"`
+			Prerelease bool   `json:"prerelease"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&pageReleases); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("failed to decode tofu releases: %w", err)
+		}
+		resp.Body.Close()
+
+		if len(pageReleases) == 0 {
+			break
+		}
+
+		allReleases = append(allReleases, pageReleases...)
+		page++
+	}
+
+	if len(allReleases) == 0 {
+		return nil, fmt.Errorf("no releases found from OpenTofu GitHub API")
 	}
 
 	var versions []*semver.Version
-	for _, r := range releases {
+	for _, r := range allReleases {
 		if r.Prerelease && !includePrerelease {
 			continue
 		}
