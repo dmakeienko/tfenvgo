@@ -1,134 +1,45 @@
 name: Release
-on:
-  release:
-    types:
-      - created
 
-permissions:
-  contents: write
-  packages: write
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  release-linux-amd64:
-    name: release linux/amd64
+  release_please:
+    name: Release Please
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux]
-        goarch: [amd64]
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
         with:
-          fetch-depth: 0 # get all tags to get latest version
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Set version
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
-      - name: Build
-        uses: wangyoucao577/go-release-action@v1
-        with:
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
-          release_tag: ${{ env.VERSION }}
-
-  release-linux-arm64:
-    name: release linux/arm64
+  goreleaser:
+    name: GoReleaser
+    needs: release_please
+    if: needs.release_please.outputs.release_created
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux]
-        goarch: [arm64]
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
-          fetch-depth: 0 # get all tags to get latest version
+          fetch-depth: 0
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - name: Set up Go
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version-file: 'go.mod'
+          go-version-file: go.mod
 
-      - name: Set version
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
-      - name: Build
-        uses: wangyoucao577/go-release-action@v1
+      - uses: goreleaser/goreleaser-action@5daf1e915a5f0af01ddbcd89a43b8061ff4f1a89 # v7.2.2
         with:
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
-          release_tag: ${{ env.VERSION }}          
-
-  release-darwin-amd64:
-    name: release darwin/amd64
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [darwin]
-        goarch: [amd64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # get all tags to get latest version
-          token: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Set version
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
-      - name: Build
-        uses: wangyoucao577/go-release-action@v1
-        with:
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
-          release_tag: ${{ env.VERSION }}  
-
-  release-darwin-arm64:
-    name: release darwin/arm64
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [darwin]
-        goarch: [arm64]
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0 # get all tags to get latest version
-          token: ${{ secrets.RELEASE_TOKEN }}
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Set version
-        run: echo "VERSION=$(git describe --tags --abbrev=0)" >> $GITHUB_ENV
-
-      - name: Build
-        uses: wangyoucao577/go-release-action@v1
-        with:
-          github_token: ${{ secrets.RELEASE_TOKEN }}
-          goos: ${{ matrix.goos }}
-          goarch: ${{ matrix.goarch }}
-          ldflags: -X "github.com/spf13/tfenvgo/cmd.Version=${{ env.VERSION }}"
-          release_tag: ${{ env.VERSION }}          
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
