@@ -25,5 +25,19 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+brews:
+  - name: tfenvgo
+    repository:
+      owner: dmakeienko
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: "https://github.com/dmakeienko/tfenvgo"
+    description: "Terraform version manager written in Go"
+    license: "MIT"
+    install: |
+      bin.install "tfenvgo"
+    test: |
+      system "#{bin}/tfenvgo", "--version"
+
 changelog:
   disable: true
