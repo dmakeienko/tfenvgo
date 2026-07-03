@@ -5,7 +5,7 @@ go 1.26.4
 require (
 	github.com/Masterminds/semver/v3 v3.4.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.53.0
+	golang.org/x/net v0.55.0
 )
 
 require (
