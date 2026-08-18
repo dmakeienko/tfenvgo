@@ -3,9 +3,9 @@ module github.com/spf13/tfenvgo
 go 1.26.6
 
 require (
-	github.com/Masterminds/semver/v3 v3.4.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/spf13/cobra v1.10.2
-	golang.org/x/net v0.56.0
+	golang.org/x/net v0.58.0
 )
 
 require (
