@@ -15,6 +15,44 @@
 
 * support for opentofu
 
+## [2.0.1](https://github.com/dmakeienko/tfenvgo/compare/v2.0.0...v2.0.1) (2026-08-19)
+
+
+### CI/CD
+
+* add dependabot config ([7bb7f71](https://github.com/dmakeienko/tfenvgo/commit/7bb7f71b89d08580439bc04e90d46b3d047e2d54))
+* add homebrew upload ([c6be90a](https://github.com/dmakeienko/tfenvgo/commit/c6be90a875f9dfebcc9e24a35f8b5e5bfded8c4b))
+* add homebrew upload ([ec8c7c0](https://github.com/dmakeienko/tfenvgo/commit/ec8c7c0d61b139ec6762c336ba6ef27dbe6e493f))
+* change PAT to GITHUB_TOKEN ([a5ed200](https://github.com/dmakeienko/tfenvgo/commit/a5ed2000377831418f1e02c106e7f47dcf3067c5))
+* fix dependabot.yml placing ([8f478f2](https://github.com/dmakeienko/tfenvgo/commit/8f478f2c214469a7d4a3ba81734371d8105b0346))
+* migrate from deprecated govulncheck action ([a2bca0a](https://github.com/dmakeienko/tfenvgo/commit/a2bca0a219d61788f145bbd3a88a6788bfa16435))
+* migrate from deprecated govulncheck action ([5be5bfe](https://github.com/dmakeienko/tfenvgo/commit/5be5bfe93fcb1fa4e2c7ef815e7af1d4d0a4f7d1))
+* migrate from semantic-release to release-please ([43cfc92](https://github.com/dmakeienko/tfenvgo/commit/43cfc9250e178f0987fad94df4aca8fcb777649f))
+* migrate to release-please with goreleaser ([2484ba7](https://github.com/dmakeienko/tfenvgo/commit/2484ba7e10a1b89d78aeb7060088d593ae55603a))
+* release via homebrew ([67ef985](https://github.com/dmakeienko/tfenvgo/commit/67ef98508b32ccc7423baeed804c07e4e0bb04e8))
+* rename merged ci and update rules ([44f2a05](https://github.com/dmakeienko/tfenvgo/commit/44f2a05d4f24630a683c71d8b961f01e1829e009))
+* scope permissions to job level ([f0b4d74](https://github.com/dmakeienko/tfenvgo/commit/f0b4d74aac9c6e7ebad74084ba2086dfd0d7a425))
+
+
+### Chores
+
+* bump go to 1.26.6 ([1c1594f](https://github.com/dmakeienko/tfenvgo/commit/1c1594fcd48c70e7a72be216a04fab19e5a79819))
+
+
+### Dependencies
+
+* **deps-dev:** bump brace-expansion from 1.1.12 to 1.1.14 ([b6c3fc4](https://github.com/dmakeienko/tfenvgo/commit/b6c3fc43c639efc7f337c81871de9f4eb206e9ae))
+* **deps-dev:** bump fast-uri from 3.1.0 to 3.1.2 ([e74517f](https://github.com/dmakeienko/tfenvgo/commit/e74517f4490e1a91c2be3b41f5f2be1bc4d0d076))
+* **deps-dev:** bump fast-uri from 3.1.0 to 3.1.2 ([f9d4496](https://github.com/dmakeienko/tfenvgo/commit/f9d4496de608044a610d361719d825aba1ecfba6))
+* **deps:** bump brace-expansion from 1.1.12 to 1.1.14 ([d5279b6](https://github.com/dmakeienko/tfenvgo/commit/d5279b6d938dd032dae849effbc5b3466084a7ca))
+* **deps:** bump go to 1.26.4 ([a50934e](https://github.com/dmakeienko/tfenvgo/commit/a50934e575051126512994defed8784bdbf74016))
+* **deps:** bump golang.org/x/net from 0.53.0 to 0.55.0 ([6f8659a](https://github.com/dmakeienko/tfenvgo/commit/6f8659a5837b7dd435e51c9fee09701961974297))
+* **deps:** bump golang.org/x/net from 0.53.0 to 0.55.0 ([c963de5](https://github.com/dmakeienko/tfenvgo/commit/c963de55d57fcd2f752de6736ad8e22558c700e2))
+* **deps:** bump the github-actions group with 4 updates ([bc8f59e](https://github.com/dmakeienko/tfenvgo/commit/bc8f59e6b66971efd08f9167c7f8c80afaffd6bf))
+* **deps:** bump the github-actions group with 4 updates ([8923fa5](https://github.com/dmakeienko/tfenvgo/commit/8923fa5aa82f2005b58aca3611c3d817f5730626))
+* **deps:** bump the go-dependencies group with 2 updates ([8597021](https://github.com/dmakeienko/tfenvgo/commit/85970210a8108236e7099071b48c1062b2f1455a))
+* **deps:** bump the go-dependencies group with 2 updates ([acd40ed](https://github.com/dmakeienko/tfenvgo/commit/acd40ed861907b47b8269d7ac61d42a5d4e41664))
+
 ## [1.7.1](https://github.com/dmakeienko/tfenvgo/compare/v1.7.0...v1.7.1) (2026-04-12)
 
 
