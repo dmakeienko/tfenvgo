@@ -85,6 +85,19 @@ tfenvgo flavor terraform
 
 ## Installation
 
+### Homebrew
+
+```sh
+brew tap dmakeienko/tap
+brew install tfenvgo
+```
+
+To upgrade to the latest version:
+
+```sh
+brew upgrade tfenvgo
+```
+
 ### Manual
 
 1. Get the latest release: 
