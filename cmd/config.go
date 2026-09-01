@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -158,6 +160,36 @@ const osTypeEnvKey = "TFENVGO_OS_TYPE"
 const terraformVersionEnvKey = "TFENVGO_TERRAFORM_VERSION"
 const versionEnvKey = "TFENVGO_VERSION"
 const flavorEnvKey = "TFENVGO_FLAVOR"
+const downloadTimeoutEnvKey = "TFENVGO_DOWNLOAD_TIMEOUT"
+
+// defaultDownloadTimeout is used when TFENVGO_DOWNLOAD_TIMEOUT is unset or invalid.
+const defaultDownloadTimeout = 300 * time.Second
+
+// downloadTimeout returns the HTTP timeout used when downloading binaries.
+// It is read at runtime from TFENVGO_DOWNLOAD_TIMEOUT, which accepts either a
+// plain number of seconds ("600") or a Go duration string ("10m", "90s").
+// Invalid or non-positive values fall back to the default.
+func downloadTimeout() time.Duration {
+	raw := strings.TrimSpace(os.Getenv(downloadTimeoutEnvKey))
+	if raw == "" {
+		return defaultDownloadTimeout
+	}
+
+	if seconds, err := strconv.Atoi(raw); err == nil {
+		if seconds <= 0 {
+			LogWarn("Invalid %s value %q: must be positive, using %s", downloadTimeoutEnvKey, raw, defaultDownloadTimeout)
+			return defaultDownloadTimeout
+		}
+		return time.Duration(seconds) * time.Second
+	}
+
+	duration, err := time.ParseDuration(raw)
+	if err != nil || duration <= 0 {
+		LogWarn("Invalid %s value %q: expected seconds or a duration like 10m, using %s", downloadTimeoutEnvKey, raw, defaultDownloadTimeout)
+		return defaultDownloadTimeout
+	}
+	return duration
+}
 
 // Arguments
 const (

@@ -172,6 +172,7 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 
 * `TFENVGO_ARCH` - Specify to install the binary for a different architecture than your own.
 * `TFENVGO_OS_TYPE` - Specify to install the binary for a different OS type than your own.
+* `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading the binary. Defaults to `300` seconds.
 
 ### tfenvgo use [version]
 
@@ -234,6 +235,7 @@ Display the current Terraform version set by `tfenvgo`.
 * `TFENVGO_ARCH` - Specifies the architecture. The default architecture is defined during compilation. Override to download the Terraform binary for another architecture.
 * `TFENVGO_OS_TYPE` - Specifies the OS type. The default OS type is defined during compilation. Override to download the Terraform binary for another OS.
 * `TFENVGO_TERRAFORM_VERSION` - If not an empty string, this variable overrides the Terraform version provided by the `.terraform-version` file and commands `tfenvgo install`, `tfenvgo use`.
+* `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading a binary, applied to both the HTTP client and the request context. Accepts a plain number of seconds (`600`) or a Go duration string (`10m`, `90s`). Defaults to `300` seconds. Raise it for large binaries or slow/unstable connections.
 
 ## .terraform-version file
 

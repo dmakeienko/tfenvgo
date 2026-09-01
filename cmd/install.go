@@ -34,7 +34,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -196,9 +195,11 @@ func downloadBinary(flv, version string) error {
 	}
 	LogInfo("Downloading %s", downloadURL)
 
+	timeout := downloadTimeout()
+
 	// Create HTTP client with security configurations
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				MinVersion: tls.VersionTLS12,
@@ -207,7 +208,7 @@ func downloadBinary(flv, version string) error {
 	}
 
 	// Create request with context for timeout control
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
