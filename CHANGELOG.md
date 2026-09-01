@@ -15,6 +15,13 @@
 
 * support for opentofu
 
+## [2.0.2](https://github.com/dmakeienko/tfenvgo/compare/v2.0.1...v2.0.2) (2026-09-01)
+
+
+### Bug Fixes
+
+* low default timeout value fails download biinary on slow internet connection ([7cbb901](https://github.com/dmakeienko/tfenvgo/commit/7cbb901a14682acf26ec75e1abbcf35e05878af5))
+
 ## [2.0.1](https://github.com/dmakeienko/tfenvgo/compare/v2.0.0...v2.0.1) (2026-08-19)
 
 
