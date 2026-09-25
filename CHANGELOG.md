@@ -15,6 +15,14 @@
 
 * support for opentofu
 
+## [2.0.3](https://github.com/dmakeienko/tfenvgo/compare/v2.0.2...v2.0.3) (2026-09-25)
+
+
+### Dependencies
+
+* **deps:** bump golang.org/x/net from 0.58.0 to 0.59.0 in the go-dependencies group ([d40056a](https://github.com/dmakeienko/tfenvgo/commit/d40056a1ea6618ff0fbebfddc772789cf6a10c02))
+* **deps:** bump golang.org/x/net in the go-dependencies group ([f813ed5](https://github.com/dmakeienko/tfenvgo/commit/f813ed5fd56f235967b04a140d7f51545a498d94))
+
 ## [2.0.2](https://github.com/dmakeienko/tfenvgo/compare/v2.0.1...v2.0.2) (2026-09-01)
 
 
