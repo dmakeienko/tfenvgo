@@ -15,6 +15,19 @@
 
 * support for opentofu
 
+## [2.0.3](https://github.com/dmakeienko/tfenvgo/compare/v2.0.2...v2.0.3) (2026-11-18)
+
+
+### Dependencies
+
+* **deps:** bump go to 1.27.4 ([8e7415d](https://github.com/dmakeienko/tfenvgo/commit/8e7415d3d245ca57256a874a6774356a0d2f6a19))
+* **deps:** bump golang.org/x/net ([3fce519](https://github.com/dmakeienko/tfenvgo/commit/3fce5190a4646f4622abce01b40ec4d12befc5b4))
+* **deps:** bump golang.org/x/net from 0.58.0 to 0.59.0 in the go-dependencies group ([d40056a](https://github.com/dmakeienko/tfenvgo/commit/d40056a1ea6618ff0fbebfddc772789cf6a10c02))
+* **deps:** bump golang.org/x/net from 0.59.0 to 0.61.0 in the go-dependencies group ([2ed0db2](https://github.com/dmakeienko/tfenvgo/commit/2ed0db2013f37f61ce500e91b803eaa85f16f726))
+* **deps:** bump golang.org/x/net in the go-dependencies group ([f813ed5](https://github.com/dmakeienko/tfenvgo/commit/f813ed5fd56f235967b04a140d7f51545a498d94))
+* **deps:** bump goreleaser/goreleaser-action ([cd673bd](https://github.com/dmakeienko/tfenvgo/commit/cd673bd22d7a81cec402cbb5aa8705214248fdc0))
+* **deps:** bump goreleaser/goreleaser-action from 7.2.3 to 7.3.0 in the github-actions group ([0d3fc47](https://github.com/dmakeienko/tfenvgo/commit/0d3fc47cd78efaa16fb5b1bcac01b4c62b5e93ba))
+
 ## [2.0.2](https://github.com/dmakeienko/tfenvgo/compare/v2.0.1...v2.0.2) (2026-09-01)
 
 
