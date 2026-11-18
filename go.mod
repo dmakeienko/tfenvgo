@@ -1,6 +1,6 @@
 module github.com/spf13/tfenvgo
 
-go 1.26.6
+go 1.27.4
 
 require (
 	github.com/Masterminds/semver/v3 v3.5.0
