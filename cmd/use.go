@@ -67,14 +67,28 @@ func useVersion(flv, version string) error {
 		return fmt.Errorf("failed to create symlink: %w", err)
 	}
 
-	// Set executable permissions on the symlink target
-	// Intentionally allow executable bit for the binary. Permissions are set to 0755.
-	if err := os.Chmod(binPath, 0o755); err != nil { // #nosec G302 - the binary must be executable
+	if err := ensureOwnerExecutable(binPath); err != nil {
 		return fmt.Errorf("failed to update permissions: %w", err)
 	}
 
 	LogInfo("Changed current %s version to v%s", flv, version)
 	return nil
+}
+
+// ensureOwnerExecutable makes sure the owner can execute path. Extraction
+// already creates the binary executable; this only repairs a binary that lost
+// the bit. It adds the owner execute bit alone and never widens group or other
+// permissions.
+func ensureOwnerExecutable(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	mode := info.Mode().Perm()
+	if mode&0o100 != 0 {
+		return nil
+	}
+	return os.Chmod(path, mode|0o100)
 }
 
 var useCmd = &cobra.Command{
