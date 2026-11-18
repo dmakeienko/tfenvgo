@@ -5,21 +5,24 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
+type flavorCase struct {
+	name       string
+	flag       string
+	env        string
+	file       string
+	want       string
+	wantSource string
+	wantErr    string
+}
+
 func TestFlavorResolution(t *testing.T) {
-	tests := []struct {
-		name       string
-		flag       string
-		env        string
-		file       string
-		want       string
-		wantSource string
-		wantErr    string
-	}{
+	tests := []flavorCase{
 		{name: "built-in default", want: FlavorTerraform, wantSource: "built-in default"},
 		{name: "file", file: "tofu\n", want: FlavorTofu, wantSource: "flavor"},
 		{name: "env beats file", env: "terraform", file: "tofu", want: FlavorTerraform, wantSource: flavorEnvKey},
@@ -29,30 +32,79 @@ func TestFlavorResolution(t *testing.T) {
 		{name: "invalid env", env: "Terraform", wantErr: flavorEnvKey + ": invalid flavor"},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			root := setupRoot(t)
-			if tt.env != "" {
-				t.Setenv(flavorEnvKey, tt.env)
-			}
-			if tt.file != "" {
-				if err := os.WriteFile(filepath.Join(root, "flavor"), []byte(tt.file), 0o600); err != nil {
-					t.Fatal(err)
-				}
-			}
-			got, source, err := flavorSource(tt.flag)
-			if tt.wantErr != "" {
-				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
-					t.Fatalf("err = %v, want containing %q", err, tt.wantErr)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if got != tt.want || !strings.Contains(source, tt.wantSource) {
-				t.Fatalf("got (%q, %q), want (%q, source containing %q)", got, source, tt.want, tt.wantSource)
-			}
-		})
+		t.Run(tt.name, func(t *testing.T) { checkFlavorCase(t, tt) })
+	}
+}
+
+// checkFlavorCase sets up the flag/env/file inputs of tt and checks what
+// flavorSource resolves.
+func checkFlavorCase(t *testing.T, tt flavorCase) {
+	t.Helper()
+	root := setupRoot(t)
+	if tt.env != "" {
+		t.Setenv(flavorEnvKey, tt.env)
+	}
+	if tt.file != "" {
+		writeTestFile(t, filepath.Join(root, "flavor"), tt.file)
+	}
+
+	got, source, err := flavorSource(tt.flag)
+	if tt.wantErr != "" {
+		assertErrContains(t, err, tt.wantErr)
+		return
+	}
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != tt.want || !strings.Contains(source, tt.wantSource) {
+		t.Fatalf("got (%q, %q), want (%q, source containing %q)", got, source, tt.want, tt.wantSource)
+	}
+}
+
+func writeTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func assertErrContains(t *testing.T, err error, want string) {
+	t.Helper()
+	if err == nil || !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want containing %q", err, want)
+	}
+}
+
+func TestEnsureOwnerExecutable(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix permission bits are not meaningful on Windows")
+	}
+	dir := t.TempDir()
+	tests := []struct {
+		name string
+		from os.FileMode
+		want os.FileMode
+	}{
+		{name: "adds only the owner execute bit", from: 0o640, want: 0o740},
+		{name: "never widens group or other access", from: 0o600, want: 0o700},
+		{name: "leaves an executable file alone", from: 0o750, want: 0o750},
+	}
+	for _, tt := range tests {
+		path := filepath.Join(dir, strings.ReplaceAll(tt.name, " ", "_"))
+		writeTestFile(t, path, "bin")
+		if err := os.Chmod(path, tt.from); err != nil {
+			t.Fatal(err)
+		}
+		if err := ensureOwnerExecutable(path); err != nil {
+			t.Fatalf("%s: %v", tt.name, err)
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != tt.want {
+			t.Errorf("%s: mode %o -> %o, want %o", tt.name, tt.from, got, tt.want)
+		}
 	}
 }
 
