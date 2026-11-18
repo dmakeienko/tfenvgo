@@ -33,7 +33,19 @@ var Version = "development"
 var rootCmd = &cobra.Command{
 	Use:     "tfenvgo",
 	Version: Version,
-	Short:   "tfenvgo is a simple Terraform version manager written in Go",
+	Short:   "tfenvgo is a simple Terraform and OpenTofu version manager written in Go",
+	Long: `tfenvgo installs Terraform and OpenTofu releases side by side under ~/.tfenvgo
+and switches between them by pointing ~/.tfenvgo/bin/terraform (or
+~/.tfenvgo/bin/tofu) at the chosen version. Add ~/.tfenvgo/bin to your PATH.
+
+Downloads are verified against the release's SHA-256 checksums. Commands exit
+with status 1 on failure.
+
+The flavor (terraform or tofu) comes from --flavor, then TFENVGO_FLAVOR, then
+~/.tfenvgo/flavor (see "tfenvgo flavor"), and defaults to terraform.`,
+	Example: `  tfenvgo install 1.5.7 && tfenvgo use 1.5.7
+  tfenvgo use latest-allowed
+  tfenvgo list-remote --flavor tofu`,
 	// Subcommands return errors instead of logging and returning, so the
 	// process exit code reflects failures. Execute prints the error once.
 	SilenceUsage:  true,

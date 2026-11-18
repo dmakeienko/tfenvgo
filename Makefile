@@ -2,8 +2,7 @@
 BINARY_NAME=tfenvgo
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-BUILD_DATE=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-LDFLAGS=-ldflags "-X github.com/dmakeienko/tfenvgo/v2/cmd.Version=$(VERSION)-$(COMMIT_HASH) -X main.BuildDate=$(BUILD_DATE) -s -w"
+LDFLAGS=-ldflags "-X github.com/dmakeienko/tfenvgo/v2/cmd.Version=$(VERSION)-$(COMMIT_HASH) -s -w"
 
 # Go settings
 GOOS ?= $(shell go env GOOS)
@@ -37,7 +36,6 @@ build-all: clean deps ## Build for all supported platforms
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME)-linux-arm64 .
 	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME)-darwin-amd64 .
 	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME)-darwin-arm64 .
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BIN_DIR)/$(BINARY_NAME)-windows-amd64.exe .
 
 test: ## Run tests
 	go test -v -race -coverprofile=coverage.out ./...
@@ -47,15 +45,15 @@ test-coverage: test ## Run tests with coverage report
 	@echo "Coverage report generated: coverage.html"
 
 lint: ## Run linters
-	@which golangci-lint >/dev/null 2>&1 || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest)
+	@which golangci-lint >/dev/null 2>&1 || (echo "Installing golangci-lint..." && go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0)
 	golangci-lint run
 
 security-scan: ## Run security vulnerability scanner
-	@which govulncheck >/dev/null 2>&1 || (echo "Installing govulncheck..." && go install golang.org/x/vuln/cmd/govulncheck@latest)
+	@which govulncheck >/dev/null 2>&1 || (echo "Installing govulncheck..." && go install golang.org/x/vuln/cmd/govulncheck@v1.10.0)
 	govulncheck ./...
 
 install: build ## Install the binary to GOPATH/bin
-	cp $(BIN_DIR)/$(BINARY_NAME) $(GOPATH)/bin/
+	cp $(BIN_DIR)/$(BINARY_NAME) $(shell go env GOPATH)/bin/
 
 clean: ## Clean build artifacts
 	rm -rf $(BUILD_DIR)

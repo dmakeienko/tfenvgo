@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 )
@@ -39,13 +40,33 @@ func initConfig() error {
 	return nil
 }
 
+// binDirOnPath reports whether dir is one of the entries in $PATH.
+func binDirOnPath(dir string) bool {
+	for _, entry := range filepath.SplitList(os.Getenv("PATH")) {
+		if filepath.Clean(entry) == filepath.Clean(dir) {
+			return true
+		}
+	}
+	return false
+}
+
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create required configuration for tfenvgo to work",
-	Long:  "Create required configuration for tfenvgo to work",
+	Long: `Create ~/.tfenvgo/bin, where "tfenvgo use" puts the active terraform and tofu
+symlinks, and check that it is on your PATH. Running it is optional: the other
+commands create the directory when they need it.`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return initConfig()
+		if err := initConfig(); err != nil {
+			return err
+		}
+		if !binDirOnPath(terraformBinPath) {
+			LogWarn("%s is not on your PATH. Add this line to your shell profile:", terraformBinPath)
+			fmt.Println(`  export PATH="$HOME/.tfenvgo/bin:$PATH"`)
+		}
+		return nil
 	},
 }
 

@@ -207,7 +207,11 @@ func releaseArtifact(flv, version, osType, arch string) (archiveURL, sumsURL, ar
 	}
 }
 
-// newHTTPClient returns an HTTP client with the given timeout and TLS 1.2+.
+// maxRedirects matches net/http's default redirect limit.
+const maxRedirects = 10
+
+// newHTTPClient returns an HTTP client with the given timeout and TLS 1.2+
+// that refuses to follow a redirect from https to plain http.
 func newHTTPClient(timeout time.Duration) *http.Client {
 	return &http.Client{
 		Timeout: timeout,
@@ -216,7 +220,18 @@ func newHTTPClient(timeout time.Duration) *http.Client {
 				MinVersion: tls.VersionTLS12,
 			},
 		},
+		CheckRedirect: checkRedirect,
 	}
+}
+
+func checkRedirect(req *http.Request, via []*http.Request) error {
+	if len(via) >= maxRedirects {
+		return fmt.Errorf("stopped after %d redirects", maxRedirects)
+	}
+	if via[0].URL.Scheme == "https" && req.URL.Scheme != "https" {
+		return fmt.Errorf("refusing redirect from %s to insecure %s", via[0].URL, req.URL)
+	}
+	return nil
 }
 
 // httpGet performs a GET request and returns the response only for 200 OK.
@@ -279,6 +294,9 @@ func fetchExpectedChecksum(ctx context.Context, client *http.Client, sumsURL, ar
 func downloadBinary(flv, version string) error {
 	osType := getEnv(osTypeEnvKey, defaultOSType)
 	arch := getEnv(archEnvKey, defaultArch)
+	if err := validatePlatform(osType, arch); err != nil {
+		return err
+	}
 	archiveURL, sumsURL, archiveName := releaseArtifact(flv, version, osType, arch)
 
 	timeout := downloadTimeout()
@@ -364,11 +382,26 @@ func installBinary(flv, version string) error {
 
 // installCmd represents the install command
 var installCmd = &cobra.Command{
-	Use:   "install",
+	Use:   "install [VERSION [REGEX]]",
 	Short: "Install a specific version of Terraform or OpenTofu",
-	Args:  cobra.MaximumNArgs(2),
+	Long: `Download a Terraform or OpenTofu release, verify its SHA-256 checksum against
+the release's SHA256SUMS file, and unpack it into ~/.tfenvgo/versions.
+Installing does not change the active version; use "tfenvgo use" for that.
+
+` + versionArgHelp,
+	Example: `  tfenvgo install 1.5.7
+  tfenvgo install latest
+  tfenvgo install latest '^1\.5\.'
+  tfenvgo install latest --include-prerelease
+  tfenvgo install min-required
+  tfenvgo install latest --flavor tofu`,
+	Args:              cobra.MaximumNArgs(2),
+	ValidArgsFunction: completeVersions([]string{latestArg, latestAllowedArg, minRequiredArg}, false),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		flv := resolveFlavor(flavorFlag)
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
+		}
 
 		requested, pattern, err := parseVersionArgs(args, versionFromEnvOrFile)
 		if err != nil {

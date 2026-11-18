@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -25,22 +24,29 @@ Without arguments, prints the currently resolved flavor and where it comes from
 
 With one argument, writes the chosen flavor to ~/.tfenvgo/flavor so it becomes
 the persistent default for all future invocations.`,
-	Args: cobra.MaximumNArgs(1),
+	Example: `  tfenvgo flavor
+  tfenvgo flavor tofu
+  TFENVGO_FLAVOR=tofu tfenvgo list`,
+	Args:      cobra.MaximumNArgs(1),
+	ValidArgs: []string{FlavorTerraform, FlavorTofu},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := initConfig(); err != nil {
-			return fmt.Errorf("failed to initialise config: %w", err)
-		}
-
 		if len(args) == 0 {
 			// Read mode: report the resolved flavor and its source.
-			printResolvedFlavor()
+			flv, source, err := flavorSource(flavorFlag)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: %s)"+Reset+"\n", flv, source)
 			return nil
 		}
 
 		// Write mode: validate and persist.
 		requested := args[0]
-		if requested != FlavorTerraform && requested != FlavorTofu {
-			return fmt.Errorf("invalid flavor %q, allowed values: %s, %s", requested, FlavorTerraform, FlavorTofu)
+		if err := validateFlavor(requested); err != nil {
+			return err
+		}
+		if err := initConfig(); err != nil {
+			return fmt.Errorf("failed to initialise config: %w", err)
 		}
 
 		flavorFilePath := filepath.Join(rootURL, "flavor")
@@ -50,28 +56,6 @@ the persistent default for all future invocations.`,
 		fmt.Printf("Default flavor set to "+Green+"'%s'\n"+Reset, requested)
 		return nil
 	},
-}
-
-// printResolvedFlavor prints the effective flavor and explains where it came from.
-func printResolvedFlavor() {
-	if flavorFlag != "" {
-		fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: --flavor flag)\n", flavorFlag)
-		return
-	}
-	if env := os.Getenv(flavorEnvKey); env != "" {
-		fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: %s env var)\n", env, flavorEnvKey)
-		return
-	}
-	flavorFile := filepath.Join(rootURL, "flavor")
-	data, err := os.ReadFile(flavorFile) // #nosec G304 - path constructed from controlled rootURL
-	if err == nil {
-		f := strings.TrimSpace(string(data))
-		if f == FlavorTofu || f == FlavorTerraform {
-			fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: %s)\n", f, flavorFile)
-			return
-		}
-	}
-	fmt.Printf("Flavor: "+Green+"%s "+Gray+"(source: built-in default)\n", FlavorTerraform)
 }
 
 func init() {

@@ -78,11 +78,25 @@ func useVersion(flv, version string) error {
 }
 
 var useCmd = &cobra.Command{
-	Use:   "use",
+	Use:   "use [VERSION [REGEX]]",
 	Short: "Change the current Terraform or OpenTofu version",
-	Args:  cobra.MaximumNArgs(2),
+	Long: `Point ~/.tfenvgo/bin/terraform (or ~/.tfenvgo/bin/tofu) at the given version,
+installing it first if needed. Keywords such as latest are resolved against the
+upstream releases, not only the installed versions.
+
+` + versionArgHelp,
+	Example: `  tfenvgo use 1.5.7
+  tfenvgo use latest
+  tfenvgo use latest '^1\.5\.'
+  tfenvgo use latest-allowed
+  tfenvgo use 1.8.0 --flavor tofu`,
+	Args:              cobra.MaximumNArgs(2),
+	ValidArgsFunction: completeVersions([]string{latestArg, latestAllowedArg, minRequiredArg}, true),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		flv := resolveFlavor(flavorFlag)
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
+		}
 
 		requested, pattern, err := parseVersionArgs(args, versionFromEnvOrFile)
 		if err != nil {

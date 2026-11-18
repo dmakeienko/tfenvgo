@@ -40,7 +40,7 @@ func writeCurrentVersionToFile(flv string) error {
 	}
 	defer terraformVersionFile.Close()
 
-	_, err2 := terraformVersionFile.WriteString(currentVersion)
+	_, err2 := terraformVersionFile.WriteString(currentVersion + "\n")
 	if err2 != nil {
 		return fmt.Errorf("failed to write %s version to file: %w", flv, err2)
 	}
@@ -52,8 +52,15 @@ func writeCurrentVersionToFile(flv string) error {
 var pinCmd = &cobra.Command{
 	Use:   "pin",
 	Short: "Write the current active version to .terraform-version file",
+	Long: `Write the active version (the one ~/.tfenvgo/bin points to) to ./.terraform-version,
+overwriting the file if it exists. "tfenvgo install" and "tfenvgo use" without a
+VERSION argument read this file.`,
+	Args: cobra.NoArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		flv := resolveFlavor(flavorFlag)
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
+		}
 		if err := writeCurrentVersionToFile(flv); err != nil {
 			return fmt.Errorf("failed to write current %s version to file: %w", flv, err)
 		}
