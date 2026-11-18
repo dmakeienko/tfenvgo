@@ -7,7 +7,12 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+
+	"github.com/ProtonMail/go-crypto/openpgp"
+	"github.com/ProtonMail/go-crypto/openpgp/armor"
+	"github.com/ProtonMail/go-crypto/openpgp/packet"
 )
 
 // setupRoot points tfenvgo at a fresh temporary root directory and clears
@@ -26,7 +31,7 @@ func setupRoot(t *testing.T) string {
 
 	for _, key := range []string{
 		flavorEnvKey, versionEnvKey, terraformVersionEnvKey,
-		osTypeEnvKey, archEnvKey, downloadTimeoutEnvKey,
+		osTypeEnvKey, archEnvKey, downloadTimeoutEnvKey, skipSignatureEnvKey,
 	} {
 		unsetEnv(t, key)
 	}
@@ -98,4 +103,78 @@ func assertNotExist(t *testing.T, path string) {
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("expected %s not to exist, stat err = %v", path, err)
 	}
+}
+
+type testKeyPair struct {
+	trusted   *openpgp.Entity // stands in for the vendor release key
+	untrusted *openpgp.Entity // any other key, e.g. an attacker's
+}
+
+var (
+	testKeysOnce sync.Once
+	testKeysVal  testKeyPair
+	testKeysErr  error
+)
+
+// testKeys returns throwaway OpenPGP keys, generated once per test binary.
+func testKeys(t *testing.T) testKeyPair {
+	t.Helper()
+	testKeysOnce.Do(func() {
+		cfg := &packet.Config{Algorithm: packet.PubKeyAlgoEdDSA}
+		testKeysVal.trusted, testKeysErr = openpgp.NewEntity("tfenvgo test release", "", "release@example.invalid", cfg)
+		if testKeysErr != nil {
+			return
+		}
+		testKeysVal.untrusted, testKeysErr = openpgp.NewEntity("someone else", "", "other@example.invalid", cfg)
+	})
+	if testKeysErr != nil {
+		t.Fatalf("generating test keys: %v", testKeysErr)
+	}
+	return testKeysVal
+}
+
+// trustTestReleaseKey makes the trusted test key the release key of both
+// flavors for the duration of the test.
+func trustTestReleaseKey(t *testing.T) {
+	t.Helper()
+	oldTF, oldTofu := terraformSigningKey, tofuSigningKey
+	key := armoredPublicKey(t, testKeys(t).trusted)
+	terraformSigningKey, tofuSigningKey = key, key
+	t.Cleanup(func() { terraformSigningKey, tofuSigningKey = oldTF, oldTofu })
+}
+
+func armoredPublicKey(t *testing.T, e *openpgp.Entity) string {
+	t.Helper()
+	var buf bytes.Buffer
+	w, err := armor.Encode(&buf, openpgp.PublicKeyType, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Serialize(w); err != nil {
+		t.Fatal(err)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return buf.String()
+}
+
+// signDetached returns a binary detached signature of msg, like the
+// .sig/.gpgsig files published next to SHA256SUMS.
+func signDetached(t *testing.T, signer *openpgp.Entity, msg []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := openpgp.DetachSign(&buf, signer, bytes.NewReader(msg), nil); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
+func signDetachedArmored(t *testing.T, signer *openpgp.Entity, msg []byte) []byte {
+	t.Helper()
+	var buf bytes.Buffer
+	if err := openpgp.ArmoredDetachSign(&buf, signer, bytes.NewReader(msg), nil); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
 }

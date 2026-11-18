@@ -17,7 +17,7 @@ Here are the reasons:
 3. Ability to work with *pre-release* Terraform versions (see `--include-prerelease` flag).
 4. `tfenvgo` is faster by around 50%.
 5. Supports opentofu out of the box
-6. Verifies the SHA-256 checksum of every downloaded release (see [Download verification](#download-verification)).
+6. Verifies the vendor's OpenPGP signature and the SHA-256 checksum of every downloaded release (see [Download verification](#download-verification)).
 
 ## Support
 
@@ -151,7 +151,7 @@ go install github.com/dmakeienko/tfenvgo/v2@latest
 
 ### tfenvgo install [version]
 
-Install a specific version of Terraform or OpenTofu, verifying its checksum (see [Download verification](#download-verification)). Installing does not change the active version; use `tfenvgo use` for that. If no version is passed, it is taken from the **TFENVGO_VERSION** environment variable, then **TFENVGO_TERRAFORM_VERSION**, then the **.terraform-version** file, and defaults to `latest`.
+Install a specific version of Terraform or OpenTofu, verifying its signature and checksum (see [Download verification](#download-verification)). Installing does not change the active version; use `tfenvgo use` for that. If no version is passed, it is taken from the **TFENVGO_VERSION** environment variable, then **TFENVGO_TERRAFORM_VERSION**, then the **.terraform-version** file, and defaults to `latest`.
 
 **Available options:**
 
@@ -173,6 +173,7 @@ Install a specific version of Terraform or OpenTofu, verifying its checksum (see
 * `TFENVGO_ARCH` - Specify to install the binary for a different architecture than your own.
 * `TFENVGO_OS_TYPE` - Specify to install the binary for a different OS type than your own.
 * `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading the binary. Defaults to `300` seconds.
+* `TFENVGO_SKIP_SIGNATURE` - **Insecure.** Set to `1` to skip signature verification (see [Download verification](#download-verification)).
 
 ### tfenvgo use [version]
 
@@ -243,12 +244,22 @@ Display the current Terraform or OpenTofu version set by `tfenvgo`. To print the
 * `TFENVGO_OS_TYPE` - Specifies the OS type (e.g. `linux`, `darwin`). The default OS type is defined during compilation. Override to download the binary for another OS.
 * `NO_COLOR` - Set to any non-empty value to disable colored output. Colors are also disabled automatically when output is not a terminal.
 * `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading a binary, applied to both the HTTP client and the request context. Accepts a plain number of seconds (`600`) or a Go duration string (`10m`, `90s`). Defaults to `300` seconds. Raise it for large binaries or slow/unstable connections.
+* `TFENVGO_SKIP_SIGNATURE` - **Insecure.** Set to exactly `1` to install without verifying the signature of `SHA256SUMS`. The download is then no longer proven to come from HashiCorp or OpenTofu; only use it for releases that were published unsigned (see [Download verification](#download-verification)).
 
 ## Download verification
 
-Before extracting a release, `tfenvgo` downloads the release's `SHA256SUMS` file from the same release location (`terraform_<version>_SHA256SUMS` from releases.hashicorp.com, `tofu_<version>_SHA256SUMS` from the OpenTofu GitHub release) and checks the archive's SHA-256 against it. The install fails if the checksum file is missing, does not list the archive, or the checksum does not match.
+Before downloading the archive, `tfenvgo` fetches the release's `SHA256SUMS` file and its detached OpenPGP signature, and checks the signature against the vendor's release key built into the `tfenvgo` binary:
 
-> NOTE: this protects against corrupted and truncated downloads. The checksum file comes from the same server as the archive, so it does not prove authenticity on its own; GPG signature verification is not implemented yet.
+| Flavor | Files | Trusted key |
+|---|---|---|
+| Terraform | `terraform_<version>_SHA256SUMS` and `terraform_<version>_SHA256SUMS.72D7468F.sig` from releases.hashicorp.com | HashiCorp Security, fingerprint `C874 011F 0AB4 0511 0D02 1055 3436 5D94 72D7 468F` ([source](https://www.hashicorp.com/en/trust/security)) |
+| OpenTofu | `tofu_<version>_SHA256SUMS` and `tofu_<version>_SHA256SUMS.gpgsig` from the OpenTofu GitHub release | OpenTofu, fingerprint `E3E6 E43D 84CB 852E ADB0 051D 0C0A F313 E5FD 9F80` ([source](https://get.opentofu.org/opentofu.asc)) |
+
+Only then is the archive downloaded and its SHA-256 compared with the one listed in the signed `SHA256SUMS`. The install fails, and nothing is extracted, if the signature is missing, invalid or made by any other key, if `SHA256SUMS` is missing or does not list the archive, or if the checksum does not match. Together these prove the archive is the one the vendor published, even if the download server or a mirror is compromised.
+
+The keys are embedded at build time (`cmd/keys/`) rather than downloaded, so a new `tfenvgo` release is needed if a vendor rotates its key. HashiCorp's current key expires on 2030-03-01; after that, verification fails until `tfenvgo` ships the vendor's renewed key.
+
+> **Unsigned releases:** the OpenTofu `1.6.0` alphas, betas and `rc1` were published without an OpenPGP signature (only a cosign one), so installing them fails. Setting `TFENVGO_SKIP_SIGNATURE=1` skips the signature check (the SHA-256 check still runs) and prints a warning. This is **insecure**: the checksum then comes from the same server as the archive and proves nothing about who published it. Do not set it globally.
 
 ## Exit codes
 

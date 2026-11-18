@@ -192,18 +192,32 @@ const (
 	maxChecksumFileSize int64 = 1024 * 1024 // 1MB
 )
 
-// releaseArtifact returns the archive URL, the SHA256SUMS URL and the archive
-// file name (as listed in SHA256SUMS) for a flavor/version/platform.
-func releaseArtifact(flv, version, osType, arch string) (archiveURL, sumsURL, archiveName string) {
+// releaseFiles locates the files of one release download.
+type releaseFiles struct {
+	archiveURL  string
+	sumsURL     string // SHA256SUMS
+	sigURL      string // detached OpenPGP signature of SHA256SUMS
+	archiveName string // archive file name as listed in SHA256SUMS
+}
+
+// releaseArtifact returns the download locations for a flavor/version/platform.
+//
+// Terraform: HashiCorp publishes one signature per signing key; the one named
+// after key 72D7468F exists for every release, including those originally
+// signed with the pre-2021 key. OpenTofu: SHA256SUMS.gpgsig is the OpenPGP
+// signature (the .sig/.pem pair next to it is for cosign).
+func releaseArtifact(flv, version, osType, arch string) releaseFiles {
 	switch flv {
 	case FlavorTofu:
 		base := tofuDownloadBase + "/v" + version + "/"
-		archiveName = "tofu_" + version + "_" + osType + "_" + arch + ".zip"
-		return base + archiveName, base + "tofu_" + version + "_SHA256SUMS", archiveName
+		sums := base + "tofu_" + version + "_SHA256SUMS"
+		name := "tofu_" + version + "_" + osType + "_" + arch + ".zip"
+		return releaseFiles{archiveURL: base + name, sumsURL: sums, sigURL: sums + ".gpgsig", archiveName: name}
 	default:
 		base := terraformReleasesURL + "/" + version + "/"
-		archiveName = "terraform_" + version + "_" + osType + "_" + arch + ".zip"
-		return base + archiveName, base + "terraform_" + version + "_SHA256SUMS", archiveName
+		sums := base + "terraform_" + version + "_SHA256SUMS"
+		name := "terraform_" + version + "_" + osType + "_" + arch + ".zip"
+		return releaseFiles{archiveURL: base + name, sumsURL: sums, sigURL: sums + ".72D7468F.sig", archiveName: name}
 	}
 }
 
@@ -276,19 +290,49 @@ func parseChecksum(sums []byte, name string) (string, error) {
 	return "", fmt.Errorf("no checksum for %s in SHA256SUMS", name)
 }
 
-// fetchExpectedChecksum downloads SHA256SUMS and returns the checksum for archiveName.
-func fetchExpectedChecksum(ctx context.Context, client *http.Client, sumsURL, archiveName string) (string, error) {
-	resp, err := httpGet(ctx, client, sumsURL)
+// fetchSmallFile downloads url, refusing bodies larger than limit.
+func fetchSmallFile(ctx context.Context, client *http.Client, url string, limit int64) ([]byte, error) {
+	resp, err := httpGet(ctx, client, url)
 	if err != nil {
-		return "", fmt.Errorf("failed to download checksums: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxChecksumFileSize))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
-		return "", fmt.Errorf("failed to read checksums: %w", err)
+		return nil, fmt.Errorf("failed to read %s: %w", url, err)
 	}
-	return parseChecksum(body, archiveName)
+	if int64(len(body)) > limit {
+		return nil, fmt.Errorf("%s exceeds the %d byte limit", url, limit)
+	}
+	return body, nil
+}
+
+// fetchExpectedChecksum downloads SHA256SUMS, verifies its OpenPGP signature
+// against the flavor's embedded release key, and returns the checksum listed
+// for the release archive.
+func fetchExpectedChecksum(ctx context.Context, client *http.Client, flv string, rel releaseFiles) (string, error) {
+	sums, err := fetchSmallFile(ctx, client, rel.sumsURL, maxChecksumFileSize)
+	if err != nil {
+		return "", fmt.Errorf("failed to download checksums: %w", err)
+	}
+
+	if signatureVerificationDisabled() {
+		LogWarn("%s=1: skipping signature verification of %s. This is insecure: the download is not proven to come from the vendor.",
+			skipSignatureEnvKey, path.Base(rel.sumsURL))
+	} else {
+		sig, err := fetchSmallFile(ctx, client, rel.sigURL, maxSignatureFileSize)
+		if err != nil {
+			return "", fmt.Errorf("failed to download checksum signature: %w", err)
+		}
+		fingerprint, err := verifySignature(signingKey(flv), sums, sig)
+		if err != nil {
+			return "", fmt.Errorf("signature verification of %s failed: %w", path.Base(rel.sumsURL), err)
+		}
+		LogInfo("Verified signature of %s (key %s)", path.Base(rel.sumsURL), fingerprint)
+	}
+
+	return parseChecksum(sums, rel.archiveName)
 }
 
 func downloadBinary(flv, version string) error {
@@ -297,22 +341,23 @@ func downloadBinary(flv, version string) error {
 	if err := validatePlatform(osType, arch); err != nil {
 		return err
 	}
-	archiveURL, sumsURL, archiveName := releaseArtifact(flv, version, osType, arch)
+	rel := releaseArtifact(flv, version, osType, arch)
+	archiveName := rel.archiveName
 
 	timeout := downloadTimeout()
 	client := newHTTPClient(timeout)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	// Fetch the published checksum first: if it is missing or malformed there
-	// is no point downloading the archive.
-	expected, err := fetchExpectedChecksum(ctx, client, sumsURL, archiveName)
+	// Fetch and authenticate the published checksum first: if it is missing,
+	// unsigned or malformed there is no point downloading the archive.
+	expected, err := fetchExpectedChecksum(ctx, client, flv, rel)
 	if err != nil {
 		return err
 	}
 
-	LogInfo("Downloading %s", archiveURL)
-	resp, err := httpGet(ctx, client, archiveURL)
+	LogInfo("Downloading %s", rel.archiveURL)
+	resp, err := httpGet(ctx, client, rel.archiveURL)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
@@ -384,9 +429,18 @@ func installBinary(flv, version string) error {
 var installCmd = &cobra.Command{
 	Use:   "install [VERSION [REGEX]]",
 	Short: "Install a specific version of Terraform or OpenTofu",
-	Long: `Download a Terraform or OpenTofu release, verify its SHA-256 checksum against
-the release's SHA256SUMS file, and unpack it into ~/.tfenvgo/versions.
-Installing does not change the active version; use "tfenvgo use" for that.
+	Long: `Download a Terraform or OpenTofu release, verify it, and unpack it into
+~/.tfenvgo/versions. Installing does not change the active version; use
+"tfenvgo use" for that.
+
+Verification: the release's SHA256SUMS file must carry a valid OpenPGP
+signature from the vendor's release key built into tfenvgo (HashiCorp key
+72D7468F for Terraform, the OpenTofu key 0C0AF313E5FD9F80 for OpenTofu), and
+the archive must match the SHA-256 listed in it. The install fails if the
+signature is missing or invalid or the checksum does not match.
+TFENVGO_SKIP_SIGNATURE=1 skips the signature check; that is insecure and only
+meant for releases published without a signature (OpenTofu 1.6.0 alphas,
+betas and rc1).
 
 ` + versionArgHelp,
 	Example: `  tfenvgo install 1.5.7

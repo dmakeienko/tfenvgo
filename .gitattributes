@@ -1,0 +1,4 @@
+# Signed release fixtures and embedded release keys must stay byte-for-byte
+# identical to the upstream files: no line-ending conversion.
+cmd/testdata/** -text
+cmd/keys/*.asc -text
