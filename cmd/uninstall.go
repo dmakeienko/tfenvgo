@@ -22,76 +22,88 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
-func uninstallBinary(flv, version string) {
+func uninstallBinary(flv, version string) error {
 	target := filepath.Join(versionsDir(flv), version)
-	if _, err := os.Stat(target); os.IsNotExist(err) {
-		LogError("%s version v%s is not installed", flv, version)
-		return
+
+	// Defence in depth before RemoveAll: flavor and version are validated
+	// upstream, but never delete anything outside ~/.tfenvgo/versions/<flavor>.
+	rel, err := filepath.Rel(filepath.Join(rootURL, "versions"), target)
+	if err != nil || strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) || !strings.Contains(rel, string(filepath.Separator)) {
+		return fmt.Errorf("refusing to remove %s: outside the versions directory", target)
 	}
+
+	if _, err := os.Stat(target); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("%s version v%s is not installed", flv, version)
+		}
+		return fmt.Errorf("failed to check %s version v%s: %w", flv, version, err)
+	}
+
+	active, _ := getCurrentVersion(flv)
 	if err := os.RemoveAll(target); err != nil {
-		LogError("failed to remove version %s: %v", version, err)
-		return
+		return fmt.Errorf("failed to remove version %s: %w", version, err)
 	}
 	LogInfo("Uninstalled %s version v%s", flv, version)
+
+	// Don't leave the active-version symlink pointing at a deleted binary.
+	if active == version {
+		link := currentSymlinkPath(flv)
+		if err := os.Remove(link); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("uninstalled the active version but failed to remove %s: %w", link, err)
+		}
+		LogWarn("v%s was the active %s version; removed %s. Run \"tfenvgo use\" to pick another.", version, flv, link)
+	}
+	return nil
 }
 
 // uninstallCmd represents the uninstall command
 var uninstallCmd = &cobra.Command{
-	Use:   "uninstall",
+	Use:   "uninstall VERSION [REGEX]",
 	Short: "Uninstall a specific Terraform or OpenTofu version",
-	Args:  cobra.MaximumNArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
+	Long: `Remove an installed Terraform or OpenTofu version from ~/.tfenvgo/versions.
+If it is the active version, the ~/.tfenvgo/bin symlink is removed too.
 
-		var version string
-		var versionRegex *regexp.Regexp
-		if len(args) == 0 {
-			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, latestArg))
-			if version == "" {
-				version = latestArg
-			}
-		} else if len(args) == 1 {
-			version = args[0]
-		} else if len(args) == 2 && args[0] == latestArg {
-			version = args[0]
-			versionRegex = regexp.MustCompile(args[1])
+VERSION can be one of:
+  x.y.z          an exact installed version
+  latest         the newest installed stable version
+  latest REGEX   the newest installed version matching the Go regular expression REGEX
+
+Add --include-prerelease to let latest and latest REGEX pick pre-releases.
+Without VERSION, TFENVGO_VERSION or TFENVGO_TERRAFORM_VERSION is used if set.`,
+	Example: `  tfenvgo uninstall 1.5.7
+  tfenvgo uninstall latest '^1\.4\.'
+  tfenvgo uninstall 1.8.0 --flavor tofu`,
+	Args:              cobra.MaximumNArgs(2),
+	ValidArgsFunction: completeVersions([]string{latestArg}, true),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
 		}
 
-		allowedVersions := map[string]bool{
-			latestArg: true,
+		fromEnv := getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, ""))
+		if len(args) == 0 && fromEnv == "" {
+			// Uninstalling is destructive, so never default to a version.
+			return errors.New(`specify the version to uninstall, e.g. "tfenvgo uninstall 1.5.7" or "tfenvgo uninstall latest"`)
 		}
-
-		if validateArg(version, allowedVersions) != nil {
-			return
+		requested, pattern, err := parseVersionArgs(args, func() string { return fromEnv })
+		if err != nil {
+			return err
 		}
-
-		if version == latestArg && versionRegex == nil {
-			versions, err := getLocalVersions(flv, PreReleaseVersionsIncluded)
-			if err != nil {
-				LogError("failed to get latest version: %v", err)
-				return
-			}
-			if len(versions) == 0 {
-				LogError("no local versions found")
-				return
-			}
-			version = versions[0]
-		} else if version == latestArg && versionRegex != nil {
-			latestRegexVersion, err := getLatestAllowed(flv, "local", versionRegex.String())
-			if err != nil {
-				LogError("Failed to get latest regex version: %v", err)
-				return
-			}
-			version = latestRegexVersion
+		version, err := resolveVersion(flv, requested, pattern, targetLocal, []string{latestArg}, PreReleaseVersionsIncluded)
+		if err != nil {
+			return err
 		}
-		uninstallBinary(flv, version)
+		return uninstallBinary(flv, version)
 	},
 }
 

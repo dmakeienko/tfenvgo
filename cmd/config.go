@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -13,7 +14,11 @@ import (
 const (
 	FlavorTerraform = "terraform"
 	FlavorTofu      = "tofu"
+)
 
+// Upstream release locations. Variables rather than constants so tests can
+// point them at a local httptest server.
+var (
 	terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 	tofuReleasesAPI      = "https://api.github.com/repos/opentofu/opentofu/releases"
 	tofuDownloadBase     = "https://github.com/opentofu/opentofu/releases/download"
@@ -51,25 +56,61 @@ func installedBinaryPath(flv, version string) string {
 	return filepath.Join(versionsDir(flv), version, binaryName(flv))
 }
 
-// resolveFlavor returns the effective flavor for this invocation.
+// validateFlavor rejects anything but the known flavors. The flavor becomes a
+// path component under ~/.tfenvgo/versions, so an arbitrary value such as
+// "../.." would let install and uninstall reach outside that directory.
+func validateFlavor(flv string) error {
+	if flv != FlavorTerraform && flv != FlavorTofu {
+		return fmt.Errorf("invalid flavor %q, allowed values: %s, %s", flv, FlavorTerraform, FlavorTofu)
+	}
+	return nil
+}
+
+// flavorSource returns the effective flavor and a description of where it came from.
 // Precedence: --flavor flag > TFENVGO_FLAVOR env > ~/.tfenvgo/flavor file > terraform default.
-func resolveFlavor(flag string) string {
+func flavorSource(flag string) (flavor, source string, err error) {
 	if flag != "" {
-		return flag
+		if err := validateFlavor(flag); err != nil {
+			return "", "", fmt.Errorf("--flavor: %w", err)
+		}
+		return flag, "--flavor flag", nil
 	}
 	if env := os.Getenv(flavorEnvKey); env != "" {
-		return env
+		if err := validateFlavor(env); err != nil {
+			return "", "", fmt.Errorf("%s: %w", flavorEnvKey, err)
+		}
+		return env, flavorEnvKey + " env var", nil
 	}
 	flavorFile := filepath.Join(rootURL, "flavor")
 	data, err := os.ReadFile(flavorFile) // #nosec G304 - path is constructed from controlled rootURL
 	if err == nil {
 		f := strings.TrimSpace(string(data))
-		if f == FlavorTofu || f == FlavorTerraform {
-			return f
+		if validateFlavor(f) == nil {
+			return f, flavorFile, nil
+		}
+		LogWarn("ignoring invalid flavor %q in %s", f, flavorFile)
+	}
+	return FlavorTerraform, "built-in default", nil
+}
+
+// resolveFlavor returns the effective, validated flavor for this invocation.
+func resolveFlavor(flag string) (string, error) {
+	flv, _, err := flavorSource(flag)
+	return flv, err
+}
+
+// validatePlatform checks the OS and architecture used in download URLs and
+// archive names, so a typo in TFENVGO_OS_TYPE or TFENVGO_ARCH fails clearly.
+func validatePlatform(osType, arch string) error {
+	for name, value := range map[string]string{osTypeEnvKey: osType, archEnvKey: arch} {
+		if !platformRegex.MatchString(value) {
+			return fmt.Errorf("invalid %s value %q: expected something like linux, darwin, amd64 or arm64", name, value)
 		}
 	}
-	return FlavorTerraform
+	return nil
 }
+
+var platformRegex = regexp.MustCompile(`^[a-z0-9]+$`)
 
 // initPaths initializes global path variables and runs the one-time migration
 // of old-style ~/.tfenvgo/versions/<semver>/ layouts to the new
@@ -153,6 +194,23 @@ var Magenta = "\033[35m"
 var Cyan = "\033[36m"
 var Gray = "\033[37m"
 var White = "\033[97m"
+
+func init() {
+	if !colorEnabled() {
+		Reset, Red, Green, Yellow, Blue, Magenta, Cyan, Gray, White = "", "", "", "", "", "", "", "", ""
+	}
+}
+
+// colorEnabled reports whether ANSI colors should be used: not when NO_COLOR
+// is set (https://no-color.org), TERM is "dumb", or stdout is not a terminal
+// (pipes, files, CI logs).
+func colorEnabled() bool {
+	if os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" {
+		return false
+	}
+	info, err := os.Stdout.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
+}
 
 // Environment variables
 const archEnvKey = "TFENVGO_ARCH"

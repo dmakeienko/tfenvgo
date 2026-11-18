@@ -13,10 +13,11 @@ Terraform version manager like [tfenv](https://github.com/tfutils/tfenv) but wri
 Here are the reasons:
 
 1. Distributed as a single binary, easy to install.
-2. `min-required` and `latest-allowed` don't have limitations as `tfenv`: `tfenvgo` uses real Go regex.
+2. `latest "regex"` uses real Go regular expressions, and `min-required` / `latest-allowed` use full SemVer constraint evaluation.
 3. Ability to work with *pre-release* Terraform versions (see `--include-prerelease` flag).
 4. `tfenvgo` is faster by around 50%.
 5. Supports opentofu out of the box
+6. Verifies the vendor's OpenPGP signature and the SHA-256 checksum of every downloaded release (see [Download verification](#download-verification)).
 
 ## Support
 
@@ -98,32 +99,31 @@ To upgrade to the latest version:
 brew upgrade tfenvgo
 ```
 
+### Go
+
+Requires the Go version listed in `go.mod`:
+
+```sh
+go install github.com/dmakeienko/tfenvgo/v2@latest
+```
+
 ### Manual
 
-1. Get the latest release: 
+1. Download a release, verify its checksum and unpack it:
 
   ```sh
-  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}; curl -sSL "https://github.com/dmakeienko/tfenvgo/releases/download/$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)/tfenvgo-$(curl -s "https://api.github.com/repos/dmakeienko/tfenvgo/releases" | jq -r '.[].tag_name' | head -1)-$(uname -s)-$ARCH.tar.gz" | tar xzf -
+  # Latest release version (without the leading "v"), or set it yourself, e.g. VERSION=2.0.3
+  VERSION=$(curl -fsSL https://api.github.com/repos/dmakeienko/tfenvgo/releases/latest | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p')
+  OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+  ARCH=$(uname -m); case "$ARCH" in x86_64) ARCH=amd64 ;; aarch64) ARCH=arm64 ;; esac
+  FILE="tfenvgo_${VERSION}_${OS}_${ARCH}.tar.gz"
+  BASE="https://github.com/dmakeienko/tfenvgo/releases/download/v${VERSION}"
+
+  curl -fsSLO "$BASE/$FILE"
+  curl -fsSLO "$BASE/checksums.txt"
+  grep " $FILE\$" checksums.txt | sha256sum -c -   # on macOS: shasum -a 256 -c -
+  tar -xzf "$FILE" tfenvgo
   ```
-
-OR
-
-1.1 Download specific version:
-
-  ```sh
-  VERSION="vX.Y.Z"
-  PLATFORM=$(uname -s)
-  ARCH=$(uname -m); ARCH=${ARCH/x86_64/amd64}
-
-  curl -LO https://github.com/dmakeienko/tfenvgo/releases/download/$VERSION/tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
-  ```
-
-1.2 Then unarchive it:
-
-  ```sh
-  tar -xvzf tfenvgo-$VERSION-$PLATFORM-$ARCH.tar.gz
-  ```
-
 
 2. Install `tfenvgo` into any location that is in your `PATH`:
 
@@ -151,7 +151,7 @@ OR
 
 ### tfenvgo install [version]
 
-Install a specific version of Terraform. If no parameter is passed, the version to install is resolved automatically via the **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version** file, in that order of precedence. If no argument is provided, it will default to the `latest`.
+Install a specific version of Terraform or OpenTofu, verifying its signature and checksum (see [Download verification](#download-verification)). Installing does not change the active version; use `tfenvgo use` for that. If no version is passed, it is taken from the **TFENVGO_VERSION** environment variable, then **TFENVGO_TERRAFORM_VERSION**, then the **.terraform-version** file, and defaults to `latest`.
 
 **Available options:**
 
@@ -159,10 +159,10 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 * `latest` - Syntax to install the latest available *stable* version.
 * `latest-allowed` - Syntax to scan your Terraform files to detect which version is maximally allowed.
 * `min-required` - Syntax to scan your Terraform files to detect which version is minimally required.
-* `latest "regex"` - Syntax to install the latest version matching the regex.
+* `latest "regex"` - Syntax to install the latest version matching the regex, e.g. `tfenvgo install latest "^1\.5\."`.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-> NOTE: `latest "regex"` does not work with prerelease versions
+> NOTE: the regex is matched against versions like `1.5.7` or `1.12.0-alpha20250213`. Add `--include-prerelease` to consider pre-release versions too.
 
 **Available flags:**
 
@@ -173,34 +173,35 @@ Install a specific version of Terraform. If no parameter is passed, the version 
 * `TFENVGO_ARCH` - Specify to install the binary for a different architecture than your own.
 * `TFENVGO_OS_TYPE` - Specify to install the binary for a different OS type than your own.
 * `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading the binary. Defaults to `300` seconds.
+* `TFENVGO_SKIP_SIGNATURE` - **Insecure.** Set to `1` to skip signature verification (see [Download verification](#download-verification)).
 
 ### tfenvgo use [version]
 
-Switch to a specific version to use. If no parameter is passed, the version to use is resolved automatically via the **TFENVGO_TERRAFORM_VERSION** environment variable or **.terraform-version** file, in that order of precedence, defaulting to `latest` if none are found.
+Switch to a specific version, installing it first if needed. If no version is passed, it is resolved the same way as for `tfenvgo install`: **TFENVGO_VERSION**, then **TFENVGO_TERRAFORM_VERSION**, then **.terraform-version**, then `latest`. Keywords such as `latest` are resolved against the upstream releases, not only the installed versions.
 
 **Available options:**
 
 * `x.y.z` - Semver 2.0.0 string specifying the exact version to use.
-* `latest` - Syntax to use the latest installed *stable* version.
+* `latest` - Syntax to use the latest available *stable* version (installing it if needed).
 * `min-required` - Syntax to scan your Terraform files to detect which version is minimally required.
 * `latest-allowed` - Syntax to scan your Terraform files to detect which version is the latest allowed.
-* `latest "regex"` - Syntax to install the latest version matching the regex.
+* `latest "regex"` - Syntax to use the latest version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-> NOTE: `latest "regex"` does not work with prerelease versions
+> NOTE: the regex is matched against versions like `1.5.7` or `1.12.0-alpha20250213`. Add `--include-prerelease` to consider pre-release versions too.
 
-### tfenvgo uninstall [version]
+### tfenvgo uninstall version
 
-Uninstall a specific version of Terraform.
+Uninstall a specific version of Terraform or OpenTofu. A version is required (or set via **TFENVGO_VERSION** / **TFENVGO_TERRAFORM_VERSION**); running `tfenvgo uninstall` with nothing set is an error rather than removing a version for you. If you uninstall the active version, its `~/.tfenvgo/bin` symlink is removed too.
 
 **Available options:**
 
 * `x.y.z` - Semver 2.0.0 string specifying the exact version to uninstall.
 * `latest` - Syntax to uninstall the latest present version.
-* `latest "regex"` - Syntax to install the latest version matching the regex.
+* `latest "regex"` - Syntax to uninstall the latest installed version matching the regex.
 
 > NOTE: because some symbols interpreted by shell as commands, use quotes (" or ') to specify regex.
-> NOTE: `latest "regex"` does not work with prerelease versions
+> NOTE: the regex is matched against versions like `1.5.7` or `1.12.0-alpha20250213`. Add `--include-prerelease` to consider pre-release versions too.
 
 **Available flags:**
 
@@ -216,7 +217,7 @@ List all available Terraform versions installed locally. By default, it fetches 
 
 ### tfenvgo list-remote
 
-Get all available versions of Terraform from the Hashicorp release page. By default, it fetches *only stable* versions.
+Get all available versions from the HashiCorp release page (Terraform) or the OpenTofu GitHub releases (`--flavor tofu`), newest first, one per line, so the output can be piped (`tfenvgo list-remote | head -5`). By default, it fetches *only stable* versions.
 
 **Available flags:**
 
@@ -228,20 +229,47 @@ Write the current Terraform version set by `tfenvgo` to the `.terraform-version`
 
 ### tfenvgo version (version-name)
 
-Display the current Terraform version set by `tfenvgo`.
+Display the current Terraform or OpenTofu version set by `tfenvgo`. To print the version of `tfenvgo` itself, use `tfenvgo --version`.
+
+### Shell completion
+
+`tfenvgo completion bash|zsh|fish|powershell` prints a completion script. `use` and `uninstall` complete installed versions; `flavor` completes `terraform` and `tofu`.
 
 ## Environment variables
 
-* `TFENVGO_ARCH` - Specifies the architecture. The default architecture is defined during compilation. Override to download the Terraform binary for another architecture.
-* `TFENVGO_OS_TYPE` - Specifies the OS type. The default OS type is defined during compilation. Override to download the Terraform binary for another OS.
-* `TFENVGO_TERRAFORM_VERSION` - If not an empty string, this variable overrides the Terraform version provided by the `.terraform-version` file and commands `tfenvgo install`, `tfenvgo use`.
+* `TFENVGO_VERSION` - Version used by `tfenvgo install` and `tfenvgo use` when no version argument is passed. Takes precedence over `TFENVGO_TERRAFORM_VERSION` and the `.terraform-version` file.
+* `TFENVGO_TERRAFORM_VERSION` - Same as `TFENVGO_VERSION`, kept for compatibility; used only when `TFENVGO_VERSION` is not set.
+* `TFENVGO_FLAVOR` - `terraform` or `tofu`. Overrides `~/.tfenvgo/flavor`; the `--flavor` flag overrides it. Any other value is an error.
+* `TFENVGO_ARCH` - Specifies the architecture (e.g. `amd64`, `arm64`). The default architecture is defined during compilation. Override to download the binary for another architecture.
+* `TFENVGO_OS_TYPE` - Specifies the OS type (e.g. `linux`, `darwin`). The default OS type is defined during compilation. Override to download the binary for another OS.
+* `NO_COLOR` - Set to any non-empty value to disable colored output. Colors are also disabled automatically when output is not a terminal.
 * `TFENVGO_DOWNLOAD_TIMEOUT` - Timeout for downloading a binary, applied to both the HTTP client and the request context. Accepts a plain number of seconds (`600`) or a Go duration string (`10m`, `90s`). Defaults to `300` seconds. Raise it for large binaries or slow/unstable connections.
+* `TFENVGO_SKIP_SIGNATURE` - **Insecure.** Set to exactly `1` to install without verifying the signature of `SHA256SUMS`. The download is then no longer proven to come from HashiCorp or OpenTofu; only use it for releases that were published unsigned (see [Download verification](#download-verification)).
+
+## Download verification
+
+Before downloading the archive, `tfenvgo` fetches the release's `SHA256SUMS` file and its detached OpenPGP signature, and checks the signature against the vendor's release key built into the `tfenvgo` binary:
+
+| Flavor | Files | Trusted key |
+|---|---|---|
+| Terraform | `terraform_<version>_SHA256SUMS` and `terraform_<version>_SHA256SUMS.72D7468F.sig` from releases.hashicorp.com | HashiCorp Security, fingerprint `C874 011F 0AB4 0511 0D02 1055 3436 5D94 72D7 468F` ([source](https://www.hashicorp.com/en/trust/security)) |
+| OpenTofu | `tofu_<version>_SHA256SUMS` and `tofu_<version>_SHA256SUMS.gpgsig` from the OpenTofu GitHub release | OpenTofu, fingerprint `E3E6 E43D 84CB 852E ADB0 051D 0C0A F313 E5FD 9F80` ([source](https://get.opentofu.org/opentofu.asc)) |
+
+Only then is the archive downloaded and its SHA-256 compared with the one listed in the signed `SHA256SUMS`. The install fails, and nothing is extracted, if the signature is missing, invalid or made by any other key, if `SHA256SUMS` is missing or does not list the archive, or if the checksum does not match. Together these prove the archive is the one the vendor published, even if the download server or a mirror is compromised.
+
+The keys are embedded at build time (`cmd/keys/`) rather than downloaded, so a new `tfenvgo` release is needed if a vendor rotates its key. HashiCorp's current key expires on 2030-03-01; after that, verification fails until `tfenvgo` ships the vendor's renewed key.
+
+> **Unsigned releases:** the OpenTofu `1.6.0` alphas, betas and `rc1` were published without an OpenPGP signature (only a cosign one), so installing them fails. Setting `TFENVGO_SKIP_SIGNATURE=1` skips the signature check (the SHA-256 check still runs) and prints a warning. This is **insecure**: the checksum then comes from the same server as the archive and proves nothing about who published it. Do not set it globally.
+
+## Exit codes
+
+Every command exits with status `1` on failure, so `tfenvgo install 1.5.7 && terraform plan` stops if the install fails.
 
 ## .terraform-version file
 
-If you put a `.terraform-version` file in your project root, `tfenvgo` detects it and uses the version written in it. If the version is `latest` or `latest: "regex"`, the latest matching version will be selected.
+If you put a `.terraform-version` file in the current directory, `tfenvgo install` and `tfenvgo use` without a version argument use the version written in it. The file must contain an exact version such as `1.5.7` (an optional leading `v` is allowed); the first such line is used. `tfenvgo pin` writes this file for you. Keywords such as `latest` are not read from the file; when it has no exact version, `tfenvgo` falls back to `latest`.
 
-> **NOTE:** The `TFENVGO_TERRAFORM_VERSION` environment variable can be used to override the version specified by the `.terraform-version` file.
+> **NOTE:** The `TFENVGO_VERSION` and `TFENVGO_TERRAFORM_VERSION` environment variables override the version specified by the `.terraform-version` file. Only the current directory is checked, not parent directories.
 
 For `tfenvgo` to be able to detect the `.terraform-version` file, add the provided shell hook to your shell config (`.zshrc` or `.bashrc`):
 

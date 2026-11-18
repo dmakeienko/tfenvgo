@@ -15,7 +15,7 @@ builds:
       - arm64
     ldflags:
       - -s -w
-      - -X github.com/spf13/tfenvgo/cmd.Version={{.Version}}
+      - -X github.com/dmakeienko/tfenvgo/v2/cmd.Version={{.Version}}
 
 archives:
   - formats:

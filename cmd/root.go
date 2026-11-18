@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -34,7 +33,23 @@ var Version = "development"
 var rootCmd = &cobra.Command{
 	Use:     "tfenvgo",
 	Version: Version,
-	Short:   "tfenvgo is a simple Terraform version manager written in Go",
+	Short:   "tfenvgo is a simple Terraform and OpenTofu version manager written in Go",
+	Long: `tfenvgo installs Terraform and OpenTofu releases side by side under ~/.tfenvgo
+and switches between them by pointing ~/.tfenvgo/bin/terraform (or
+~/.tfenvgo/bin/tofu) at the chosen version. Add ~/.tfenvgo/bin to your PATH.
+
+Downloads are verified against the release's SHA-256 checksums. Commands exit
+with status 1 on failure.
+
+The flavor (terraform or tofu) comes from --flavor, then TFENVGO_FLAVOR, then
+~/.tfenvgo/flavor (see "tfenvgo flavor"), and defaults to terraform.`,
+	Example: `  tfenvgo install 1.5.7 && tfenvgo use 1.5.7
+  tfenvgo use latest-allowed
+  tfenvgo list-remote --flavor tofu`,
+	// Subcommands return errors instead of logging and returning, so the
+	// process exit code reflects failures. Execute prints the error once.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -42,12 +57,12 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	// Initialize paths before executing commands
 	if err := initPaths(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing paths: %v\n", err)
+		LogError("Error initializing paths: %v", err)
 		os.Exit(1)
 	}
 
-	err := rootCmd.Execute()
-	if err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		LogError("%v", err)
 		os.Exit(1)
 	}
 }

@@ -23,9 +23,9 @@ package cmd
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"sort"
@@ -48,15 +48,7 @@ func getRemoteVersions(flv string, includePrerelease bool) ([]string, error) {
 }
 
 func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, error) {
-	// Create HTTP client with security configurations
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}
+	client := newHTTPClient(15 * time.Second)
 
 	// Create request with context
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -121,16 +113,13 @@ func getRemoteTerraformVersions(preReleaseVersionsIncluded bool) ([]string, erro
 	return versions, nil
 }
 
+// maxReleasesPageSize caps one page of the GitHub releases API response.
+// A real page of 100 releases with full release notes is a few MB.
+const maxReleasesPageSize int64 = 32 * 1024 * 1024
+
 // getRemoteTofuVersions fetches OpenTofu releases from the GitHub API with pagination support.
 func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
-	client := &http.Client{
-		Timeout: 15 * time.Second,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				MinVersion: tls.VersionTLS12,
-			},
-		},
-	}
+	client := newHTTPClient(15 * time.Second)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -165,7 +154,7 @@ func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
 			TagName    string `json:"tag_name"`
 			Prerelease bool   `json:"prerelease"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&pageReleases); err != nil {
+		if err := json.NewDecoder(io.LimitReader(resp.Body, maxReleasesPageSize)).Decode(&pageReleases); err != nil {
 			resp.Body.Close()
 			return nil, fmt.Errorf("failed to decode tofu releases: %w", err)
 		}
@@ -213,18 +202,29 @@ func getRemoteTofuVersions(includePrerelease bool) ([]string, error) {
 var listRemoteCmd = &cobra.Command{
 	Use:   "list-remote",
 	Short: "List all available versions from the remote registry",
-	Long:  "List all available versions from the remote registry (Terraform or OpenTofu depending on --flavor)",
-	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
-		versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
+	Long: `List the versions available upstream, newest first, one per line: Terraform from
+releases.hashicorp.com, OpenTofu from its GitHub releases (depending on the flavor).
+The output is plain text, so it can be piped, e.g. tfenvgo list-remote | head -5.`,
+	Example: `  tfenvgo list-remote
+  tfenvgo list-remote --include-prerelease
+  tfenvgo list-remote --flavor tofu | grep '^1\.8\.'`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flv, err := resolveFlavor(flavorFlag)
 		if err != nil {
-			LogError("Failed to get versions: %v", err)
-			return
+			return err
 		}
-		LogInfo("Available %s versions:", flv)
+		versions, err := candidateVersions(flv, targetRemote, PreReleaseVersionsIncluded)
+		if err != nil {
+			return err
+		}
+		out := cmd.OutOrStdout()
 		for _, v := range versions {
-			LogInfo("%s", v)
+			if _, err := fmt.Fprintln(out, v.String()); err != nil {
+				return err
+			}
 		}
+		return nil
 	},
 }
 

@@ -22,29 +22,29 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 
 	"github.com/spf13/cobra"
 )
 
-func useVersion(flv, version string) {
-	err := initConfig()
-	if err != nil {
-		LogError("Failed to create config: %v", err)
-		return
+func useVersion(flv, version string) error {
+	if err := initConfig(); err != nil {
+		return fmt.Errorf("failed to create config: %w", err)
 	}
 
 	binPath := installedBinaryPath(flv, version)
 	if _, err := os.Stat(binPath); err != nil {
-		if os.IsNotExist(err) {
-			LogWarn("%s v%s is not installed", flv, version)
-			LogInfo("Trying to install %s v%s", flv, version)
-			installBinary(flv, version)
-		} else {
-			LogError("Error checking %s path: %v", flv, err)
-			return
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("error checking %s path: %w", flv, err)
+		}
+		LogWarn("%s v%s is not installed", flv, version)
+		LogInfo("Trying to install %s v%s", flv, version)
+		// Stop here on failure so the symlink never points at a missing binary.
+		if err := installBinary(flv, version); err != nil {
+			return err
 		}
 	}
 
@@ -52,101 +52,76 @@ func useVersion(flv, version string) {
 
 	// Ensure bin directory exists
 	if err := os.MkdirAll(filepath.Dir(symlinkPath), 0o750); err != nil {
-		LogError("Failed to create bin directory: %v", err)
-		return
+		return fmt.Errorf("failed to create bin directory: %w", err)
 	}
 
 	// Remove existing symlink if it exists
 	if _, err := os.Lstat(symlinkPath); err == nil {
 		if err := os.Remove(symlinkPath); err != nil {
-			LogError("Failed to remove existing symlink: %v", err)
-			return
+			return fmt.Errorf("failed to remove existing symlink: %w", err)
 		}
 	}
 
 	// Create new symlink
 	if err := os.Symlink(binPath, symlinkPath); err != nil {
-		LogError("Failed to create symlink: %v", err)
-		return
+		return fmt.Errorf("failed to create symlink: %w", err)
 	}
 
-	// Set executable permissions on the symlink target
-	// Intentionally allow executable bit for the binary. Permissions are set to 0755.
-	if err := os.Chmod(binPath, 0o755); err != nil {
-		LogError("Failed to update permissions: %v", err)
-		return
+	if err := ensureOwnerExecutable(binPath); err != nil {
+		return fmt.Errorf("failed to update permissions: %w", err)
 	}
 
 	LogInfo("Changed current %s version to v%s", flv, version)
+	return nil
+}
+
+// ensureOwnerExecutable makes sure the owner can execute path. Extraction
+// already creates the binary executable; this only repairs a binary that lost
+// the bit. It adds the owner execute bit alone and never widens group or other
+// permissions.
+func ensureOwnerExecutable(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	mode := info.Mode().Perm()
+	if mode&0o100 != 0 {
+		return nil
+	}
+	return os.Chmod(path, mode|0o100)
 }
 
 var useCmd = &cobra.Command{
-	Use:   "use",
+	Use:   "use [VERSION [REGEX]]",
 	Short: "Change the current Terraform or OpenTofu version",
-	Args:  cobra.MaximumNArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
+	Long: `Point ~/.tfenvgo/bin/terraform (or ~/.tfenvgo/bin/tofu) at the given version,
+installing it first if needed. Keywords such as latest are resolved against the
+upstream releases, not only the installed versions.
 
-		var version string
-		var versionRegex *regexp.Regexp
-		versionFromFile, _ := readVersionFromFile()
-		if len(args) == 0 {
-			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, versionFromFile))
-			if version == "" {
-				version = latestArg
-			}
-		} else if len(args) == 1 {
-			version = args[0]
-		} else if len(args) == 2 && args[0] == latestArg {
-			version = args[0]
-			versionRegex = regexp.MustCompile(args[1])
+` + versionArgHelp,
+	Example: `  tfenvgo use 1.5.7
+  tfenvgo use latest
+  tfenvgo use latest '^1\.5\.'
+  tfenvgo use latest-allowed
+  tfenvgo use 1.8.0 --flavor tofu`,
+	Args:              cobra.MaximumNArgs(2),
+	ValidArgsFunction: completeVersions([]string{latestArg, latestAllowedArg, minRequiredArg}, true),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
 		}
 
-		allowedVersions := map[string]bool{
-			latestArg:        true,
-			latestAllowedArg: true,
-			minRequiredArg:   true,
+		requested, pattern, err := parseVersionArgs(args, versionFromEnvOrFile)
+		if err != nil {
+			return err
 		}
-
-		if validateArg(version, allowedVersions) != nil {
-			return
+		keywords := []string{latestArg, latestAllowedArg, minRequiredArg}
+		version, err := resolveVersion(flv, requested, pattern, targetRemote, keywords, PreReleaseVersionsIncluded)
+		if err != nil {
+			return err
 		}
-
-		switch {
-		case (version == latestArg && versionRegex == nil):
-			versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
-			if err != nil {
-				LogError("failed to use check installed version: %v", err)
-				return
-			}
-			if len(versions) == 0 {
-				LogError("no remote versions available")
-				return
-			}
-			version = versions[0]
-		case (version == minRequiredArg):
-			minRequiredVersion, err := getMinRequired(flv, "remote")
-			if err != nil {
-				LogError("Failed to use minimum required version: %v", err)
-				return
-			}
-			version = minRequiredVersion
-		case (version == latestAllowedArg):
-			latestAllowedVersion, err := getLatestAllowed(flv, "remote", "")
-			if err != nil {
-				LogError("Failed to use latest allowed version: %v", err)
-				return
-			}
-			version = latestAllowedVersion
-		case (version == latestArg && versionRegex != nil):
-			latestRegexVersion, err := getLatestAllowed(flv, "remote", versionRegex.String())
-			if err != nil {
-				LogError("Failed to get latest regex version: %v", err)
-				return
-			}
-			version = latestRegexVersion
-		}
-		useVersion(flv, version)
+		return useVersion(flv, version)
 	},
 }
 

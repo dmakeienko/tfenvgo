@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+# Never run two releases at once, and never cancel one half-way.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release_please:
     name: Release Please
@@ -31,11 +36,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Build exactly the commit release-please tagged.
+          ref: ${{ needs.release_please.outputs.tag_name }}
           fetch-depth: 0
+          persist-credentials: false
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
+
+      - name: Test before publishing
+        run: go test -count=1 ./...
 
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:

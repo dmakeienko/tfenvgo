@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -33,6 +34,9 @@ import (
 
 func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, error) {
 	files, err := os.ReadDir(versionsDir(flv))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil // nothing installed yet for this flavor
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +75,24 @@ func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, er
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed versions",
-	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
+	Long: `List the installed versions of the current flavor, newest first.
+The active version (the one ~/.tfenvgo/bin points to) is marked with --->.`,
+	Example: `  tfenvgo list
+  tfenvgo list --include-prerelease
+  tfenvgo list --flavor tofu`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
+		}
 		versions, err := getLocalVersions(flv, PreReleaseVersionsIncluded)
 		if err != nil {
-			fmt.Printf("failed to list installed versions: %v\n", err)
-			return
+			return fmt.Errorf("failed to list installed versions: %w", err)
+		}
+		if len(versions) == 0 {
+			fmt.Printf("No %s versions installed. Install one with \"tfenvgo install\".\n", flv)
+			return nil
 		}
 		currentVersion, err := getCurrentVersion(flv)
 		if err != nil {
@@ -91,6 +107,7 @@ var listCmd = &cobra.Command{
 				fmt.Println("     " + Gray + v + Reset)
 			}
 		}
+		return nil
 	},
 }
 

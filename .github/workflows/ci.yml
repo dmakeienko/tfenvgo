@@ -11,7 +11,56 @@ on:
       - main
   pull_request:
 
+# Cancel superseded runs on the same PR; never cancel runs on main.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
+  test:
+    permissions:
+      contents: read
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Check go.mod and go.sum are tidy
+        run: go mod tidy -diff
+
+      - name: Build
+        run: go build -o tfenvgo .
+
+      - name: Smoke test the binary
+        run: |
+          ./tfenvgo --version
+          ./tfenvgo --help > /dev/null
+          # Invalid input must fail with a non-zero exit code.
+          if ./tfenvgo install not-a-version; then
+            echo "expected a non-zero exit code" >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: go test -race -count=1 -coverprofile=coverage.out ./...
+
+      - name: Coverage summary
+        run: go tool cover -func=coverage.out | tail -1
+
   lint:
     permissions:
       contents: read
@@ -30,6 +79,10 @@ jobs:
 
       - name: Golangci-lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          # Pin the linter so new upstream checks don't break unrelated PRs;
+          # Dependabot does not update this, bump it deliberately.
+          version: v2.15.0
 
   govulncheck:
     permissions:
@@ -47,4 +100,4 @@ jobs:
           go-version-file: go.mod
 
       - name: Run govulncheck
-        run: go run golang.org/x/vuln/cmd/govulncheck@v1.4.0 ./...
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.10.0 ./...

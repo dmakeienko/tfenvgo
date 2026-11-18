@@ -31,14 +31,22 @@ var versionNameCmd = &cobra.Command{
 	Use:     "version-name",
 	Aliases: []string{"version"},
 	Short:   "Display the current version set by tfenvgo",
-	Run: func(cmd *cobra.Command, args []string) {
-		flv := resolveFlavor(flavorFlag)
+	Long: `Print the Terraform or OpenTofu version that ~/.tfenvgo/bin currently points to.
+
+This is the managed tool's version. To print tfenvgo's own version, use
+"tfenvgo --version".`,
+	Args: cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flv, err := resolveFlavor(flavorFlag)
+		if err != nil {
+			return err
+		}
 		currentVersion, err := getCurrentVersion(flv)
 		if err != nil {
-			fmt.Println(Red + "Failed to get current " + flv + " version: " + err.Error() + Reset)
-			return
+			return fmt.Errorf("failed to get current %s version: %w", flv, err)
 		}
 		fmt.Println("Current " + Magenta + flv + Reset + " version: " + Green + currentVersion + Reset)
+		return nil
 	},
 }
 

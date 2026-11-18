@@ -21,7 +21,7 @@ THE SOFTWARE.
 */
 package main
 
-import "github.com/spf13/tfenvgo/cmd"
+import "github.com/dmakeienko/tfenvgo/v2/cmd"
 
 func main() {
 	cmd.Execute()
