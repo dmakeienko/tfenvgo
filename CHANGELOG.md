@@ -15,6 +15,13 @@
 
 * support for opentofu
 
+## [2.0.4](https://github.com/dmakeienko/tfenvgo/compare/v2.0.3...v2.0.4) (2026-11-18)
+
+
+### Bug Fixes
+
+* **uninstall:** report error when version is not installed ([28ace96](https://github.com/dmakeienko/tfenvgo/commit/28ace9695fb2012e3b07b980b2ceef0ebd541803))
+
 ## [2.0.3](https://github.com/dmakeienko/tfenvgo/compare/v2.0.2...v2.0.3) (2026-11-18)
 
 
