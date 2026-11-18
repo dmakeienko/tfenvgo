@@ -30,7 +30,12 @@ import (
 )
 
 func uninstallBinary(flv, version string) {
-	if err := os.RemoveAll(filepath.Join(versionsDir(flv), version)); err != nil {
+	target := filepath.Join(versionsDir(flv), version)
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		LogError("%s version v%s is not installed", flv, version)
+		return
+	}
+	if err := os.RemoveAll(target); err != nil {
 		LogError("failed to remove version %s: %v", version, err)
 		return
 	}
