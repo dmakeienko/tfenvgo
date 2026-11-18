@@ -52,13 +52,12 @@ func writeCurrentVersionToFile(flv string) error {
 var pinCmd = &cobra.Command{
 	Use:   "pin",
 	Short: "Write the current active version to .terraform-version file",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		flv := resolveFlavor(flavorFlag)
-		err := writeCurrentVersionToFile(flv)
-		if err != nil {
-			fmt.Println(Red + "Failed to write current " + flv + " version to file: " + err.Error() + Reset)
-			return
+		if err := writeCurrentVersionToFile(flv); err != nil {
+			return fmt.Errorf("failed to write current %s version to file: %w", flv, err)
 		}
+		return nil
 	},
 }
 

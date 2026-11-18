@@ -3,7 +3,7 @@ BINARY_NAME=tfenvgo
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 COMMIT_HASH=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 BUILD_DATE=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')
-LDFLAGS=-ldflags "-X github.com/spf13/tfenvgo/cmd.Version=$(VERSION)-$(COMMIT_HASH) -X main.BuildDate=$(BUILD_DATE) -s -w"
+LDFLAGS=-ldflags "-X github.com/dmakeienko/tfenvgo/v2/cmd.Version=$(VERSION)-$(COMMIT_HASH) -X main.BuildDate=$(BUILD_DATE) -s -w"
 
 # Go settings
 GOOS ?= $(shell go env GOOS)

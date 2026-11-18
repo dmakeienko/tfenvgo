@@ -44,11 +44,8 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create required configuration for tfenvgo to work",
 	Long:  "Create required configuration for tfenvgo to work",
-	Run: func(cmd *cobra.Command, args []string) {
-		err := initConfig()
-		if err != nil {
-			LogError("failed to create config: %v", err)
-		}
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return initConfig()
 	},
 }
 

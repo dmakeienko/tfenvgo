@@ -20,6 +20,12 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      # Tests repeat fixture strings and read files from t.TempDir().
+      - path: _test\.go
+        linters:
+          - goconst
+          - gosec
     paths:
       - third_party$
       - builtin$

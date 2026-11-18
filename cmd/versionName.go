@@ -31,14 +31,14 @@ var versionNameCmd = &cobra.Command{
 	Use:     "version-name",
 	Aliases: []string{"version"},
 	Short:   "Display the current version set by tfenvgo",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		flv := resolveFlavor(flavorFlag)
 		currentVersion, err := getCurrentVersion(flv)
 		if err != nil {
-			fmt.Println(Red + "Failed to get current " + flv + " version: " + err.Error() + Reset)
-			return
+			return fmt.Errorf("failed to get current %s version: %w", flv, err)
 		}
 		fmt.Println("Current " + Magenta + flv + Reset + " version: " + Green + currentVersion + Reset)
+		return nil
 	},
 }
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -90,106 +91,172 @@ func getTerraformVersionConstraint() (string, error) {
 	return requiredVersion, nil
 }
 
+// Sources that version keywords are resolved against.
+const (
+	targetLocal  = "local"
+	targetRemote = "remote"
+)
+
+// candidateVersions lists the versions available from target (installed or
+// remote), parsed and sorted newest first.
+func candidateVersions(flv, target string, includePrerelease bool) ([]*semver.Version, error) {
+	var (
+		raw []string
+		err error
+	)
+	switch target {
+	case targetLocal:
+		raw, err = getLocalVersions(flv, includePrerelease)
+	case targetRemote:
+		raw, err = getRemoteVersions(flv, includePrerelease)
+	default:
+		return nil, fmt.Errorf("unknown version source %q", target)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to list %s %s versions: %w", target, flv, err)
+	}
+
+	versions := make([]*semver.Version, 0, len(raw))
+	for _, s := range raw {
+		v, err := semver.NewVersion(s)
+		if err != nil {
+			continue // Skip invalid versions
+		}
+		versions = append(versions, v)
+	}
+	if len(versions) == 0 {
+		return nil, fmt.Errorf("no %s %s versions found", target, flv)
+	}
+
+	sort.Sort(sort.Reverse(semver.Collection(versions)))
+	return versions, nil
+}
+
+// requiredVersionConstraint parses required_version from the *.tf files in
+// the current directory.
+func requiredVersionConstraint() (*semver.Constraints, error) {
+	raw, err := getTerraformVersionConstraint()
+	if err != nil {
+		return nil, err
+	}
+	LogInfo("Found version constraint: %s", raw)
+	constraints, err := semver.NewConstraint(raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid required_version constraint %q: %w", raw, err)
+	}
+	return constraints, nil
+}
+
+// getMinRequired returns the oldest version from target that satisfies required_version.
 func getMinRequired(flv, target string) (string, error) {
-	terraformVersionContraint, _ := getTerraformVersionConstraint()
-	LogInfo("Found version constraint: %s", terraformVersionContraint)
-	constraints, err := semver.NewConstraint(terraformVersionContraint)
+	constraints, err := requiredVersionConstraint()
 	if err != nil {
-		return "", fmt.Errorf("invalid constraint: %w", err)
+		return "", err
 	}
-
-	var versions []string
-	switch target {
-	case "local":
-		versions, _ = getLocalVersions(flv, false)
-	case "remote":
-		versions, _ = getRemoteVersions(flv, false)
+	versions, err := candidateVersions(flv, target, false)
+	if err != nil {
+		return "", err
 	}
-
-	if len(versions) == 0 {
-		return "", fmt.Errorf("no %s versions found", flv)
-	}
-
-	var validVersions []*semver.Version
-	for _, versionStr := range versions {
-		version, err := semver.NewVersion(versionStr)
-		if err != nil {
-			continue // Skip invalid versions
-		}
-		if constraints.Check(version) {
-			validVersions = append(validVersions, version)
+	for i := len(versions) - 1; i >= 0; i-- {
+		if constraints.Check(versions[i]) {
+			return versions[i].String(), nil
 		}
 	}
-
-	if len(validVersions) == 0 {
-		return "", fmt.Errorf("no available versions satisfy the constraint")
-	}
-
-	sort.Sort(semver.Collection(validVersions))
-
-	return validVersions[0].String(), nil // Return the smallest matching version
+	return "", fmt.Errorf("no %s %s version satisfies the constraint", target, flv)
 }
 
-func getLatestAllowed(flv, target, constraint string) (string, error) {
-	var terraformVersionContraint string
-	if constraint == "" {
-		terraformVersionContraint, _ = getTerraformVersionConstraint()
-	} else {
-		terraformVersionContraint = constraint
-	}
-	LogInfo("Found version constraint: %s", terraformVersionContraint)
-	constraints, err := semver.NewConstraint(terraformVersionContraint)
+// getLatestAllowed returns the newest version from target that satisfies required_version.
+func getLatestAllowed(flv, target string) (string, error) {
+	constraints, err := requiredVersionConstraint()
 	if err != nil {
-		return "", fmt.Errorf("invalid constraint: %w", err)
+		return "", err
 	}
-
-	var versions []string
-	switch target {
-	case "local":
-		versions, _ = getLocalVersions(flv, false)
-	case "remote":
-		versions, _ = getRemoteVersions(flv, false)
+	versions, err := candidateVersions(flv, target, false)
+	if err != nil {
+		return "", err
 	}
-
-	if len(versions) == 0 {
-		return "", fmt.Errorf("no %s versions found", flv)
-	}
-
-	var validVersions []*semver.Version
-	for _, versionStr := range versions {
-		version, err := semver.NewVersion(versionStr)
-		if err != nil {
-			continue // Skip invalid versions
-		}
-		if constraints.Check(version) {
-			validVersions = append(validVersions, version)
+	for _, v := range versions {
+		if constraints.Check(v) {
+			return v.String(), nil
 		}
 	}
-
-	if len(validVersions) == 0 {
-		return "", fmt.Errorf("no available versions satisfy the constraint")
-	}
-
-	sort.Sort(sort.Reverse(semver.Collection(validVersions))) // Even though getRemoteVersions() returns versions in desc order, sort it to ensure it
-
-	return validVersions[0].String(), nil // Return the highest matching version
+	return "", fmt.Errorf("no %s %s version satisfies the constraint", target, flv)
 }
 
-func validateArg(arg string, allowedVersions map[string]bool) error {
-	if allowedVersions[arg] {
-		return nil
+// getLatestMatching returns the newest version from target whose string form
+// matches the Go regular expression pattern.
+func getLatestMatching(flv, target, pattern string, includePrerelease bool) (string, error) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return "", fmt.Errorf("invalid regex %q: %w", pattern, err)
+	}
+	versions, err := candidateVersions(flv, target, includePrerelease)
+	if err != nil {
+		return "", err
+	}
+	for _, v := range versions {
+		if re.MatchString(v.String()) {
+			return v.String(), nil
+		}
+	}
+	return "", fmt.Errorf("no %s %s version matches regex %q", target, flv, pattern)
+}
+
+// parseVersionArgs splits CLI arguments into a requested version (a semver
+// string or keyword) and an optional regex. With no arguments it uses
+// fallback(), and "latest" if that is empty.
+func parseVersionArgs(args []string, fallback func() string) (requested, pattern string, err error) {
+	switch len(args) {
+	case 0:
+		requested = fallback()
+		if requested == "" {
+			requested = latestArg
+		}
+		return requested, "", nil
+	case 1:
+		return args[0], "", nil
+	default:
+		if args[0] != latestArg {
+			return "", "", fmt.Errorf("a regex can only follow %q, got %q", latestArg, args[0])
+		}
+		return latestArg, args[1], nil
+	}
+}
+
+// versionFromEnvOrFile is the default version for install and use:
+// TFENVGO_VERSION, then TFENVGO_TERRAFORM_VERSION, then .terraform-version.
+func versionFromEnvOrFile() string {
+	versionFromFile, _ := readVersionFromFile()
+	return getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, versionFromFile))
+}
+
+// resolveVersion turns a requested version (an exact semver version or one of
+// the allowed keywords) into a concrete version, looking it up in target.
+func resolveVersion(flv, requested, pattern, target string, keywords []string, includePrerelease bool) (string, error) {
+	if !slices.Contains(keywords, requested) {
+		if _, err := semver.NewVersion(requested); err != nil {
+			return "", fmt.Errorf("invalid version %q: expected a semver version or one of: %s", requested, strings.Join(keywords, ", "))
+		}
+		return requested, nil
 	}
 
-	// Check if it's a valid Semver version
-	if _, err := semver.NewVersion(arg); err != nil {
-		validArgs := make([]string, 0, len(allowedVersions))
-		for k := range allowedVersions {
-			validArgs = append(validArgs, k)
+	switch requested {
+	case latestArg:
+		if pattern != "" {
+			return getLatestMatching(flv, target, pattern, includePrerelease)
 		}
-		LogError("Invalid version provided. Allowed values are: %s or a valid semver version", strings.Join(validArgs, ", "))
-		return err
+		versions, err := candidateVersions(flv, target, includePrerelease)
+		if err != nil {
+			return "", err
+		}
+		return versions[0].String(), nil
+	case latestAllowedArg:
+		return getLatestAllowed(flv, target)
+	case minRequiredArg:
+		return getMinRequired(flv, target)
+	default:
+		return "", fmt.Errorf("unsupported version keyword %q", requested)
 	}
-	return nil
 }
 
 func readVersionFromFile() (string, error) {

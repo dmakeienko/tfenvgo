@@ -27,9 +27,10 @@ go.work.sum
 # vscode
 .vscode
 
-# Terraform files used for tests
-*.tf
-.terraform-version
+# Terraform files used for manual testing in the repo root
+# (scoped to the root so test fixtures under testdata/ can be committed)
+/*.tf
+/.terraform-version
 
 build/
 

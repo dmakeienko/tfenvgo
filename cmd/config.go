@@ -13,7 +13,11 @@ import (
 const (
 	FlavorTerraform = "terraform"
 	FlavorTofu      = "tofu"
+)
 
+// Upstream release locations. Variables rather than constants so tests can
+// point them at a local httptest server.
+var (
 	terraformReleasesURL = "https://releases.hashicorp.com/terraform"
 	tofuReleasesAPI      = "https://api.github.com/repos/opentofu/opentofu/releases"
 	tofuDownloadBase     = "https://github.com/opentofu/opentofu/releases/download"

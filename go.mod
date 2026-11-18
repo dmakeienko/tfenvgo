@@ -1,4 +1,4 @@
-module github.com/spf13/tfenvgo
+module github.com/dmakeienko/tfenvgo/v2
 
 go 1.27.4
 

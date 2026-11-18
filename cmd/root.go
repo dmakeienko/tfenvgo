@@ -22,7 +22,6 @@ THE SOFTWARE.
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -35,6 +34,10 @@ var rootCmd = &cobra.Command{
 	Use:     "tfenvgo",
 	Version: Version,
 	Short:   "tfenvgo is a simple Terraform version manager written in Go",
+	// Subcommands return errors instead of logging and returning, so the
+	// process exit code reflects failures. Execute prints the error once.
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -42,12 +45,12 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	// Initialize paths before executing commands
 	if err := initPaths(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error initializing paths: %v\n", err)
+		LogError("Error initializing paths: %v", err)
 		os.Exit(1)
 	}
 
-	err := rootCmd.Execute()
-	if err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		LogError("%v", err)
 		os.Exit(1)
 	}
 }

@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -33,6 +34,9 @@ import (
 
 func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, error) {
 	files, err := os.ReadDir(versionsDir(flv))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil // nothing installed yet for this flavor
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -71,12 +75,11 @@ func getLocalVersions(flv string, preReleaseVersionsIncluded bool) ([]string, er
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all installed versions",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		flv := resolveFlavor(flavorFlag)
 		versions, err := getLocalVersions(flv, PreReleaseVersionsIncluded)
 		if err != nil {
-			fmt.Printf("failed to list installed versions: %v\n", err)
-			return
+			return fmt.Errorf("failed to list installed versions: %w", err)
 		}
 		currentVersion, err := getCurrentVersion(flv)
 		if err != nil {
@@ -91,6 +94,7 @@ var listCmd = &cobra.Command{
 				fmt.Println("     " + Gray + v + Reset)
 			}
 		}
+		return nil
 	},
 }
 

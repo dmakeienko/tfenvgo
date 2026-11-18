@@ -26,31 +26,29 @@ Without arguments, prints the currently resolved flavor and where it comes from
 With one argument, writes the chosen flavor to ~/.tfenvgo/flavor so it becomes
 the persistent default for all future invocations.`,
 	Args: cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := initConfig(); err != nil {
-			LogError("Failed to initialise config: %v", err)
-			return
+			return fmt.Errorf("failed to initialise config: %w", err)
 		}
 
 		if len(args) == 0 {
 			// Read mode: report the resolved flavor and its source.
 			printResolvedFlavor()
-			return
+			return nil
 		}
 
 		// Write mode: validate and persist.
 		requested := args[0]
 		if requested != FlavorTerraform && requested != FlavorTofu {
-			LogError("Invalid flavor %q. Allowed values: %s, %s", requested, FlavorTerraform, FlavorTofu)
-			return
+			return fmt.Errorf("invalid flavor %q, allowed values: %s, %s", requested, FlavorTerraform, FlavorTofu)
 		}
 
 		flavorFilePath := filepath.Join(rootURL, "flavor")
 		if err := os.WriteFile(flavorFilePath, []byte(requested), 0o600); err != nil {
-			LogError("Error writing flavor file: %v", err)
-			return
+			return fmt.Errorf("error writing flavor file: %w", err)
 		}
 		fmt.Printf("Default flavor set to "+Green+"'%s'\n"+Reset, requested)
+		return nil
 	},
 }
 

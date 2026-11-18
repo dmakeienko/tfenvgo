@@ -214,17 +214,17 @@ var listRemoteCmd = &cobra.Command{
 	Use:   "list-remote",
 	Short: "List all available versions from the remote registry",
 	Long:  "List all available versions from the remote registry (Terraform or OpenTofu depending on --flavor)",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		flv := resolveFlavor(flavorFlag)
 		versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
 		if err != nil {
-			LogError("Failed to get versions: %v", err)
-			return
+			return fmt.Errorf("failed to get versions: %w", err)
 		}
 		LogInfo("Available %s versions:", flv)
 		for _, v := range versions {
 			LogInfo("%s", v)
 		}
+		return nil
 	},
 }
 

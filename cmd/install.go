@@ -24,7 +24,10 @@ package cmd
 import (
 	"archive/zip"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -32,8 +35,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -182,23 +185,31 @@ func unarchiveZip(archivePath, flv, version string) error {
 	return nil
 }
 
-func downloadBinary(flv, version string) error {
-	osType := getEnv(osTypeEnvKey, defaultOSType)
-	arch := getEnv(archEnvKey, defaultArch)
+const (
+	// maxArchiveSize caps the downloaded archive size.
+	maxArchiveSize int64 = 500 * 1024 * 1024 // 500MB
+	// maxChecksumFileSize caps the downloaded SHA256SUMS file size.
+	maxChecksumFileSize int64 = 1024 * 1024 // 1MB
+)
 
-	var downloadURL string
+// releaseArtifact returns the archive URL, the SHA256SUMS URL and the archive
+// file name (as listed in SHA256SUMS) for a flavor/version/platform.
+func releaseArtifact(flv, version, osType, arch string) (archiveURL, sumsURL, archiveName string) {
 	switch flv {
 	case FlavorTofu:
-		downloadURL = tofuDownloadBase + "/v" + version + "/tofu_" + version + "_" + osType + "_" + arch + ".zip"
+		base := tofuDownloadBase + "/v" + version + "/"
+		archiveName = "tofu_" + version + "_" + osType + "_" + arch + ".zip"
+		return base + archiveName, base + "tofu_" + version + "_SHA256SUMS", archiveName
 	default:
-		downloadURL = terraformReleasesURL + "/" + version + "/terraform_" + version + "_" + osType + "_" + arch + ".zip"
+		base := terraformReleasesURL + "/" + version + "/"
+		archiveName = "terraform_" + version + "_" + osType + "_" + arch + ".zip"
+		return base + archiveName, base + "terraform_" + version + "_SHA256SUMS", archiveName
 	}
-	LogInfo("Downloading %s", downloadURL)
+}
 
-	timeout := downloadTimeout()
-
-	// Create HTTP client with security configurations
-	client := &http.Client{
+// newHTTPClient returns an HTTP client with the given timeout and TLS 1.2+.
+func newHTTPClient(timeout time.Duration) *http.Client {
+	return &http.Client{
 		Timeout: timeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -206,79 +217,149 @@ func downloadBinary(flv, version string) error {
 			},
 		},
 	}
+}
 
-	// Create request with context for timeout control
+// httpGet performs a GET request and returns the response only for 200 OK.
+// The caller must close the response body.
+func httpGet(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "tfenvgo/"+Version)
+
+	// #nosec G704 - URL is constructed from hardcoded base URLs and version
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("GET %s: %w", url, err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("GET %s: %s", url, resp.Status)
+	}
+	return resp, nil
+}
+
+// parseChecksum returns the lowercase hex SHA-256 listed for name in a
+// sha256sum-formatted file ("<hex>  <file>" per line).
+func parseChecksum(sums []byte, name string) (string, error) {
+	for _, line := range strings.Split(string(sums), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		// A leading '*' marks binary mode in sha256sum output.
+		if strings.TrimPrefix(fields[1], "*") != name {
+			continue
+		}
+		sum := strings.ToLower(fields[0])
+		if _, err := hex.DecodeString(sum); err != nil || len(sum) != sha256.Size*2 {
+			return "", fmt.Errorf("malformed checksum for %s: %q", name, fields[0])
+		}
+		return sum, nil
+	}
+	return "", fmt.Errorf("no checksum for %s in SHA256SUMS", name)
+}
+
+// fetchExpectedChecksum downloads SHA256SUMS and returns the checksum for archiveName.
+func fetchExpectedChecksum(ctx context.Context, client *http.Client, sumsURL, archiveName string) (string, error) {
+	resp, err := httpGet(ctx, client, sumsURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to download checksums: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxChecksumFileSize))
+	if err != nil {
+		return "", fmt.Errorf("failed to read checksums: %w", err)
+	}
+	return parseChecksum(body, archiveName)
+}
+
+func downloadBinary(flv, version string) error {
+	osType := getEnv(osTypeEnvKey, defaultOSType)
+	arch := getEnv(archEnvKey, defaultArch)
+	archiveURL, sumsURL, archiveName := releaseArtifact(flv, version, osType, arch)
+
+	timeout := downloadTimeout()
+	client := newHTTPClient(timeout)
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", downloadURL, nil)
+	// Fetch the published checksum first: if it is missing or malformed there
+	// is no point downloading the archive.
+	expected, err := fetchExpectedChecksum(ctx, client, sumsURL, archiveName)
 	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return err
 	}
 
-	// Set User-Agent header
-	req.Header.Set("User-Agent", "tfenvgo/"+Version)
-
-	// Get the data
-	// #nosec G704 - URL is constructed from hardcoded base URLs and version
-	resp, err := client.Do(req)
+	LogInfo("Downloading %s", archiveURL)
+	resp, err := httpGet(ctx, client, archiveURL)
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to download file: %s", resp.Status)
-	}
-
-	// Create a secure temp file
-	tempDir := os.TempDir()
-	tmpFile, err := os.CreateTemp(tempDir, "tfenvgo-*.zip")
+	tmpFile, err := os.CreateTemp("", "tfenvgo-*.zip")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	tmpFilePath := tmpFile.Name()
-	// ensure file is closed and removed on errors
+	// Remove the temp archive on every path, including failures.
 	defer func() {
-		_ = tmpFile.Close()
-	}()
-	LogInfo("Downloaded file to %s", tmpFilePath)
-
-	// Write the body to file with size limit to prevent zip bombs
-	const maxFileSize = 500 * 1024 * 1024 // 500MB limit
-	// Write with size cap
-	_, err = io.CopyN(tmpFile, resp.Body, maxFileSize)
-	if err != nil && err != io.EOF {
 		// #nosec G703 - tmpFilePath is from os.CreateTemp(), safe temporary path
-		_ = os.Remove(tmpFilePath)
-		return fmt.Errorf("failed to write file: %w", err)
+		if err := os.Remove(tmpFilePath); err != nil && !errors.Is(err, os.ErrNotExist) {
+			LogWarn("failed to remove temp file %s: %v", tmpFilePath, err)
+		}
+	}()
+
+	// Hash while writing. Read one byte past the limit to detect oversized
+	// bodies instead of silently truncating them.
+	hasher := sha256.New()
+	written, copyErr := io.Copy(io.MultiWriter(tmpFile, hasher), io.LimitReader(resp.Body, maxArchiveSize+1))
+	closeErr := tmpFile.Close()
+	if copyErr != nil {
+		return fmt.Errorf("failed to write file: %w", copyErr)
+	}
+	if closeErr != nil {
+		return fmt.Errorf("failed to close temp file: %w", closeErr)
+	}
+	if written > maxArchiveSize {
+		return fmt.Errorf("archive exceeds the %d byte limit", maxArchiveSize)
 	}
 
-	err = unarchiveZip(tmpFilePath, flv, version)
-	if err != nil {
+	actual := hex.EncodeToString(hasher.Sum(nil))
+	if actual != expected {
+		return fmt.Errorf("checksum mismatch for %s: expected %s, got %s", archiveName, expected, actual)
+	}
+	LogInfo("Verified SHA-256 checksum of %s", archiveName)
+
+	if err := unarchiveZip(tmpFilePath, flv, version); err != nil {
+		// Do not leave a partial install behind: it would look installed next time.
+		if rmErr := os.RemoveAll(filepath.Join(versionsDir(flv), version)); rmErr != nil {
+			LogWarn("failed to clean up partial install: %v", rmErr)
+		}
 		return fmt.Errorf("failed to unarchive: %w", err)
 	}
-
-	LogInfo("Removing %s", tmpFilePath)
-	// #nosec G703 - tmpFilePath is from os.CreateTemp(), safe temporary path
-	if err := os.Remove(tmpFilePath); err != nil {
-		LogWarn("Warning: failed to remove temp file: %s", err.Error())
-	}
-	LogInfo("%s removed", tmpFilePath)
 	return nil
 }
 
-func installBinary(flv, version string) {
-	_, err := os.Stat(installedBinaryPath(flv, version))
-	if os.IsNotExist(err) {
-		if err := downloadBinary(flv, version); err != nil {
-			LogError("error downloading: %v", err)
-			return
-		}
-		LogInfo("%s v%s has been installed", flv, version)
-	} else {
+func installBinary(flv, version string) error {
+	binPath := installedBinaryPath(flv, version)
+	_, err := os.Stat(binPath)
+	if err == nil {
 		LogWarn("%s v%s is already installed.", flv, version)
+		return nil
 	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("failed to check %s: %w", binPath, err)
+	}
+
+	if err := downloadBinary(flv, version); err != nil {
+		return fmt.Errorf("failed to install %s v%s: %w", flv, version, err)
+	}
+	LogInfo("%s v%s has been installed", flv, version)
+	return nil
 }
 
 // installCmd represents the install command
@@ -286,69 +367,19 @@ var installCmd = &cobra.Command{
 	Use:   "install",
 	Short: "Install a specific version of Terraform or OpenTofu",
 	Args:  cobra.MaximumNArgs(2),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		flv := resolveFlavor(flavorFlag)
 
-		var version string
-		var versionRegex *regexp.Regexp
-		versionFromFile, _ := readVersionFromFile()
-		if len(args) == 0 {
-			version = getEnv(versionEnvKey, getEnv(terraformVersionEnvKey, versionFromFile))
-			if version == "" {
-				version = latestArg
-			}
-		} else if len(args) == 1 {
-			version = args[0]
-		} else if len(args) == 2 && args[0] == latestArg {
-			version = args[0]
-			versionRegex = regexp.MustCompile(args[1])
+		requested, pattern, err := parseVersionArgs(args, versionFromEnvOrFile)
+		if err != nil {
+			return err
 		}
-
-		allowedVersions := map[string]bool{
-			latestArg:        true,
-			latestAllowedArg: true,
-			minRequiredArg:   true,
+		keywords := []string{latestArg, latestAllowedArg, minRequiredArg}
+		version, err := resolveVersion(flv, requested, pattern, targetRemote, keywords, PreReleaseVersionsIncluded)
+		if err != nil {
+			return err
 		}
-
-		if validateArg(version, allowedVersions) != nil {
-			return
-		}
-
-		switch {
-		case (version == latestArg && versionRegex == nil):
-			versions, err := getRemoteVersions(flv, PreReleaseVersionsIncluded)
-			if err != nil {
-				LogError("failed to get latest version: %v", err)
-				return
-			}
-			if len(versions) == 0 {
-				LogError("no remote versions found")
-				return
-			}
-			version = versions[0]
-		case (version == minRequiredArg):
-			minRequiredVersion, err := getMinRequired(flv, "remote")
-			if err != nil {
-				LogError("Failed to get minimum required version: %v", err)
-				return
-			}
-			version = minRequiredVersion
-		case (version == latestAllowedArg):
-			latestAllowedVersion, err := getLatestAllowed(flv, "remote", "")
-			if err != nil {
-				LogError("Failed to get latest allowed version: %v", err)
-				return
-			}
-			version = latestAllowedVersion
-		case (version == latestArg && versionRegex != nil):
-			latestRegexVersion, err := getLatestAllowed(flv, "remote", versionRegex.String())
-			if err != nil {
-				LogError("Failed to get latest allowed version: %v", err)
-				return
-			}
-			version = latestRegexVersion
-		}
-		installBinary(flv, version)
+		return installBinary(flv, version)
 	},
 }
 
